@@ -1,26 +1,41 @@
 import React, { useMemo, useState } from "react";
 import { useStore } from "../context/StoreContext";
-import { categorias } from "../data/productos";
 import { clp, precioEfectivo } from "../utils/format";
 import ProductCard from "../components/ProductCard";
 import Alerta, { useAlerta } from "../components/Alerta";
 import { Producto } from "../types";
 
 export default function Catalogo() {
-  const { productos, agregarAlCarrito } = useStore();
-  const [categoria, setCategoria] = useState<string>("TODAS");
+  const { productos, categorias, agregarAlCarrito } = useStore();
+  const [categoriaSeleccionada, setCategoriaSeleccionada] =
+    useState<string>("TODAS");
   const [precioMax, setPrecioMax] = useState<number>(50000);
   const { alerta, mostrar } = useAlerta();
 
-  // Filtrado de productos mediante map/filter tipados
+  // Lista de categorías obtenida desde el contexto global
+  const listaCategorias = useMemo(() => {
+    if (categorias && categorias.length > 0) {
+      return categorias.map((c) => c.nombre);
+    }
+    return Array.from(new Set(productos.map((p) => p.categoria))).filter(
+      Boolean,
+    );
+  }, [categorias, productos]);
+
+  // Filtrado flexible por nombre o id de categoría
   const filtrados = useMemo<Producto[]>(
     () =>
-      productos.filter(
-        (p) =>
-          (categoria === "TODAS" || p.categoria === categoria) &&
-          precioEfectivo(p) <= precioMax,
-      ),
-    [productos, categoria, precioMax],
+      productos.filter((p) => {
+        const coincideCategoria =
+          categoriaSeleccionada === "TODAS" ||
+          p.categoria === categoriaSeleccionada ||
+          p.categoriaId === categoriaSeleccionada;
+
+        const coincidePrecio = precioEfectivo(p) <= precioMax;
+
+        return coincideCategoria && coincidePrecio;
+      }),
+    [productos, categoriaSeleccionada, precioMax],
   );
 
   const agregar = (id: string) => {
@@ -44,15 +59,15 @@ export default function Catalogo() {
             <select
               id="filterCat"
               className="form-select"
-              value={categoria}
+              value={categoriaSeleccionada}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                setCategoria(e.target.value)
+                setCategoriaSeleccionada(e.target.value)
               }
             >
               <option value="TODAS">Todas las Categorías</option>
-              {categorias.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              {listaCategorias.map((catNombre) => (
+                <option key={catNombre} value={catNombre}>
+                  {catNombre}
                 </option>
               ))}
             </select>

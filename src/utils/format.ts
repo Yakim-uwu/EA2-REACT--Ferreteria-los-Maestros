@@ -3,8 +3,21 @@ import { Producto } from "../types";
 export const clp = (n: number): string => (n ?? 0).toLocaleString("es-CL");
 
 // Las imágenes viven en /public/IMG; encodeURI maneja nombres con espacios
-export const imgSrc = (ruta: string): string =>
-  import.meta.env.BASE_URL + encodeURI(ruta);
+export const imgSrc = (ruta: string): string => {
+  if (!ruta) return "/IMG/taladro.jpg";
+
+  // Si es una URL externa completa, la devuelve tal cual
+  if (ruta.startsWith("http://") || ruta.startsWith("https://")) {
+    return ruta;
+  }
+
+  // Quita el slash inicial si ya lo trae para evitar la doble barra (//)
+  const rutaLimpia = ruta.startsWith("/") ? ruta.slice(1) : ruta;
+  const baseUrl = import.meta.env.BASE_URL || "/";
+  const baseLimpia = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+
+  return encodeURI(`${baseLimpia}${rutaLimpia}`);
+};
 
 export const precioEfectivo = (
   p: Pick<Producto, "precio" | "precioOferta">,
