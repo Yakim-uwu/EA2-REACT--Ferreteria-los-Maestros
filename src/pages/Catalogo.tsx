@@ -1,27 +1,31 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useStore } from "../context/StoreContext";
 import { categorias } from "../data/productos";
 import { clp, precioEfectivo } from "../utils/format";
 import ProductCard from "../components/ProductCard";
 import Alerta, { useAlerta } from "../components/Alerta";
+import { Producto } from "../types";
 
 export default function Catalogo() {
   const { productos, agregarAlCarrito } = useStore();
-  const [categoria, setCategoria] = useState("TODAS");
-  const [precioMax, setPrecioMax] = useState(50000);
+  const [categoria, setCategoria] = useState<string>("TODAS");
+  const [precioMax, setPrecioMax] = useState<number>(50000);
   const { alerta, mostrar } = useAlerta();
 
-  const filtrados = useMemo(
+  // Filtrado de productos mediante map/filter tipados
+  const filtrados = useMemo<Producto[]>(
     () =>
       productos.filter(
-        (p) => (categoria === "TODAS" || p.categoria === categoria) && precioEfectivo(p) <= precioMax
+        (p) =>
+          (categoria === "TODAS" || p.categoria === categoria) &&
+          precioEfectivo(p) <= precioMax,
       ),
-    [productos, categoria, precioMax]
+    [productos, categoria, precioMax],
   );
 
-  const agregar = (id) => {
+  const agregar = (id: string) => {
     const r = agregarAlCarrito(id, 1);
-    mostrar(r.mensaje, !r.ok);
+    mostrar(r.mensaje || "", !r.ok);
   };
 
   return (
@@ -34,16 +38,22 @@ export default function Catalogo() {
       <div className="card shadow-sm p-3 mb-4">
         <div className="row g-3 align-items-center">
           <div className="col-md-5">
-            <label htmlFor="filterCat" className="form-label fw-bold">Categoría</label>
+            <label htmlFor="filterCat" className="form-label fw-bold">
+              Categoría
+            </label>
             <select
               id="filterCat"
               className="form-select"
               value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setCategoria(e.target.value)
+              }
             >
               <option value="TODAS">Todas las Categorías</option>
               {categorias.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>
+                  {c}
+                </option>
               ))}
             </select>
           </div>
@@ -59,7 +69,9 @@ export default function Catalogo() {
               max="50000"
               step="1000"
               value={precioMax}
-              onChange={(e) => setPrecioMax(Number(e.target.value))}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setPrecioMax(Number(e.target.value))
+              }
             />
           </div>
         </div>
@@ -76,7 +88,12 @@ export default function Catalogo() {
           </div>
         ) : (
           filtrados.map((p) => (
-            <ProductCard key={p.id} producto={p} variante="catalogo" onAgregar={agregar} />
+            <ProductCard
+              key={p.id}
+              producto={p}
+              variante="catalogo"
+              onAgregar={agregar}
+            />
           ))
         )}
       </div>
