@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useStore } from "../context/StoreContext";
+import { GeneroUsuario } from "../types";
 import { clp } from "../utils/format";
 import Alerta, { useAlerta } from "../components/Alerta";
 
@@ -10,13 +11,14 @@ export default function Vendedor() {
 
   const { alerta, mostrar } = useAlerta();
 
-  // Registro exclusivo de cliente
+  // Registro exclusivo de cliente con todos los campos requeridos por la interfaz Usuario
   const [clienteForm, setClienteForm] = useState({
     nombreCompleto: "",
     correo: "",
     fechaNacimiento: "2000-01-01",
     direccion: "Sin Dirección",
     region: "Metropolitana",
+    genero: "prefiero_no_decir" as GeneroUsuario, // Campo requerido por la interfaz Usuario
     contrasena: "123456",
   });
 
@@ -29,16 +31,24 @@ export default function Vendedor() {
 
   const handleCrearCliente = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clienteForm.nombreCompleto || !clienteForm.correo) {
+    if (!clienteForm.nombreCompleto.trim() || !clienteForm.correo.trim()) {
       mostrar("Completa el nombre y correo del cliente.");
       return;
     }
 
-    // Restricción explicita: el vendedor crea exclusivamente rol 'cliente'
-    const res = registrarUsuario({ ...clienteForm, rol: "cliente" });
+    // Restricción explícita: el vendedor crea exclusivamente rol 'cliente'
+    const res = registrarUsuario({
+      ...clienteForm,
+      rol: "cliente",
+    });
+
     mostrar(res.mensaje || "", !res.ok);
     if (res.ok) {
-      setClienteForm({ ...clienteForm, nombreCompleto: "", correo: "" });
+      setClienteForm({
+        ...clienteForm,
+        nombreCompleto: "",
+        correo: "",
+      });
     }
   };
 

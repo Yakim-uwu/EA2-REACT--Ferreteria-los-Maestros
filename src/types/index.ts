@@ -2,7 +2,11 @@
 
 // 1. Definición del tipo para los tres roles del sistema
 export type RolUsuario = "administrador" | "vendedor" | "cliente";
-
+export type GeneroUsuario =
+  | "masculino"
+  | "femenino"
+  | "otro"
+  | "prefiero_no_decir";
 // 2. Interfaz principal de Usuario
 export interface Usuario {
   id: string;
@@ -12,6 +16,7 @@ export interface Usuario {
   correo: string;
   direccion: string;
   region: string;
+  genero: GeneroUsuario;
   rol: RolUsuario; // Se reconoce correctamente
   avatar?: string;
   contrasena: string;
