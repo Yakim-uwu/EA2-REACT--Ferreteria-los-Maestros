@@ -1,0 +1,32 @@
+/* Ajustes finos complementarios para Bootstrap 5 */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main {
+  flex: 1;
+}
+
+.hero-banner {
+  background: linear-gradient(rgba(33, 37, 41, 0.8), rgba(33, 37, 41, 0.8)),
+    url("https://picsum.photos/1200/400?grayscale") center/cover;
+  color: white;
+  padding: 4rem 2rem;
+  border-radius: 0.5rem;
+}
+
+.product-card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.product-img {
+  height: 200px;
+  object-fit: cover;
+}
