@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useStore } from "../context/StoreContext";
-import { RolUsuario, Producto, Categoria } from "../types";
+import { RolUsuario, Producto, Categoria, GeneroUsuario } from "../types";
 import { clp } from "../utils/format";
 import Alerta, { useAlerta } from "../components/Alerta";
 
@@ -32,6 +32,7 @@ export default function Admin() {
     fechaNacimiento: "1995-01-01",
     direccion: "Av. Central 100",
     region: "Metropolitana",
+    genero: "prefiero_no_decir" as GeneroUsuario,
     rol: "cliente" as RolUsuario,
     contrasena: "123456",
   });
