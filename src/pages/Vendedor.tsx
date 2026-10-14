@@ -26,7 +26,7 @@ export default function Vendedor() {
     !usuarioActivo ||
     (usuarioActivo.rol !== "vendedor" && usuarioActivo.rol !== "administrador")
   ) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/404" replace />;
   }
 
   const handleCrearCliente = (e: React.FormEvent) => {

@@ -49,7 +49,7 @@ export default function Admin() {
   const [catNombre, setCatNombre] = useState("");
 
   if (!usuarioActivo || usuarioActivo.rol !== "administrador") {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/404" replace />;
   }
 
   const handleCrearUsuario = (e: React.FormEvent) => {
