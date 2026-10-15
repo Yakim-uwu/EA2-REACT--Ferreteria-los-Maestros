@@ -111,7 +111,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     leer("carrito", []),
   );
   const [usuarios, setUsuarios] = useState<Usuario[]>(() =>
-    leer("usuarios", []),
+    leer("usuarios", usuariosSemilla),
   );
   const [usuarioActivo, setUsuarioActivo] = useState<Usuario | null>(() =>
     leer("usuarioActivo", null),
@@ -409,3 +409,43 @@ export function useStore(): StoreContextType {
     throw new Error("useStore debe usarse dentro de un <StoreProvider>");
   return ctx;
 }
+// En src/context/StoreContext.tsx (junto a categoriasSemilla)
+
+const usuariosSemilla: Usuario[] = [
+  {
+    id: "usr-admin",
+    nombreCompleto: "Carlos Administrador",
+    correo: "admin@ferreteria.cl",
+    contrasena: "123456",
+    rol: "administrador",
+    fechaNacimiento: "1985-05-15",
+    edad: 39,
+    direccion: "Av. Principal 123",
+    region: "Metropolitana",
+    genero: "masculino",
+  },
+  {
+    id: "usr-vendedor",
+    nombreCompleto: "Valeria Vendedora",
+    correo: "vendedor@ferreteria.cl",
+    contrasena: "123456",
+    rol: "vendedor",
+    fechaNacimiento: "1992-08-20",
+    edad: 32,
+    direccion: "Calle Comercial 456",
+    region: "Metropolitana",
+    genero: "femenino",
+  },
+  {
+    id: "usr-cliente",
+    nombreCompleto: "Claudio Cliente",
+    correo: "cliente@ferreteria.cl",
+    contrasena: "123456",
+    rol: "cliente",
+    fechaNacimiento: "1998-11-10",
+    edad: 26,
+    direccion: "Pasaje Los Rosales 789",
+    region: "Metropolitana",
+    genero: "masculino",
+  },
+];

@@ -2,6 +2,8 @@ import React from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useStore } from "../context/StoreContext";
 import { RolUsuario, Usuario } from "../types";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap/dist/js/bootstrap.bundle.min.js"; // 👈 Asegúrate de que esta línea esté presente
 
 export default function Navbar() {
   const {
