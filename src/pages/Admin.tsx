@@ -1,15 +1,14 @@
 import React, { useState } from "react";
-import { Navigate } from "react-router-dom";
 import { useStore } from "../context/StoreContext";
-import { RolUsuario, Producto, Categoria, GeneroUsuario } from "../types";
+import { RolUsuario, Producto, Usuario, Categoria } from "../types";
 import { clp } from "../utils/format";
 import Alerta, { useAlerta } from "../components/Alerta";
 
 export default function Admin() {
   const {
-    usuarioActivo,
     usuarios,
     registrarUsuario,
+    actualizarUsuario,
     eliminarUsuario,
     productos,
     crearProducto,
@@ -17,152 +16,308 @@ export default function Admin() {
     eliminarProducto,
     categorias,
     crearCategoria,
+    actualizarCategoria,
     eliminarCategoria,
   } = useStore();
 
-  const { alerta, mostrar } = useAlerta();
-  const [pestana, setPestana] = useState<
+  const [pestanaActiva, setPestanaActiva] = useState<
     "usuarios" | "productos" | "categorias"
   >("usuarios");
 
-  // Formularios locales
-  const [userForm, setUserForm] = useState({
+  const { alerta, mostrar } = useAlerta();
+
+  // ==========================================
+  // ESTADOS Y HANDLERS: USUARIOS
+  // ==========================================
+  const [usuarioEditando, setUsuarioEditando] = useState<Usuario | null>(null);
+  const [formUsuario, setFormUsuario] = useState({
     nombreCompleto: "",
     correo: "",
-    fechaNacimiento: "1995-01-01",
-    direccion: "Av. Central 100",
-    region: "Metropolitana",
-    genero: "prefiero_no_decir" as GeneroUsuario,
     rol: "cliente" as RolUsuario,
-    contrasena: "123456",
   });
 
-  const [prodForm, setProdForm] = useState({
+  const handleSeleccionarEditarUsuario = (u: Usuario) => {
+    setUsuarioEditando(u);
+    setFormUsuario({
+      nombreCompleto: u.nombreCompleto,
+      correo: u.correo,
+      rol: u.rol,
+    });
+  };
+
+  const handleCancelarEditarUsuario = () => {
+    setUsuarioEditando(null);
+    setFormUsuario({ nombreCompleto: "", correo: "", rol: "cliente" });
+  };
+
+  const handleGuardarUsuario = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formUsuario.nombreCompleto || !formUsuario.correo) {
+      mostrar("Ingresa el nombre y el correo", true);
+      return;
+    }
+
+    if (usuarioEditando) {
+      // Editar existente usando actualizarUsuario
+      actualizarUsuario({
+        ...usuarioEditando,
+        nombreCompleto: formUsuario.nombreCompleto,
+        correo: formUsuario.correo,
+        rol: formUsuario.rol,
+      });
+      mostrar("Usuario actualizado correctamente.");
+    } else {
+      // Crear nuevo usando registrarUsuario
+      const res = registrarUsuario({
+        nombreCompleto: formUsuario.nombreCompleto,
+        correo: formUsuario.correo,
+        rol: formUsuario.rol,
+        fechaNacimiento: "1990-01-01",
+        direccion: "Dirección Admin",
+        region: "Metropolitana",
+        genero: "otro",
+        contrasena: "123456",
+      });
+      mostrar(res.mensaje || "Usuario registrado", !res.ok);
+    }
+
+    handleCancelarEditarUsuario();
+  };
+
+  const handleEliminarUsuario = (id: string) => {
+    const res = eliminarUsuario(id);
+    mostrar(res.mensaje || "", !res.ok);
+  };
+
+  // ==========================================
+  // ESTADOS Y HANDLERS: PRODUCTOS
+  // ==========================================
+  const [productoEditando, setProductoEditando] = useState<Producto | null>(
+    null,
+  );
+  const [formProducto, setFormProducto] = useState({
     nombre: "",
     descripcion: "",
     precio: 1000,
     stock: 10,
-    categoria: "Herramientas Manuales",
+    categoria: categorias[0]?.nombre || "Herramientas Manuales",
     imagen: "/IMG/taladro.jpg",
   });
 
-  const [catNombre, setCatNombre] = useState("");
+  const handleSeleccionarEditarProducto = (p: Producto) => {
+    setProductoEditando(p);
+    setFormProducto({
+      nombre: p.nombre,
+      descripcion: p.descripcion || "",
+      precio: p.precio,
+      stock: p.stock,
+      categoria: p.categoria,
+      imagen: p.imagen || "/IMG/taladro.jpg",
+    });
+  };
 
-  if (!usuarioActivo || usuarioActivo.rol !== "administrador") {
-    return <Navigate to="/404" replace />;
-  }
+  const handleCancelarEditarProducto = () => {
+    setProductoEditando(null);
+    setFormProducto({
+      nombre: "",
+      descripcion: "",
+      precio: 1000,
+      stock: 10,
+      categoria: categorias[0]?.nombre || "Herramientas Manuales",
+      imagen: "/IMG/taladro.jpg",
+    });
+  };
 
-  const handleCrearUsuario = (e: React.FormEvent) => {
+  const handleGuardarProducto = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userForm.nombreCompleto || !userForm.correo) {
-      mostrar("Nombre y correo son obligatorios.");
+
+    // 1. Validar que el nombre no esté vacío
+    if (!formProducto.nombre.trim()) {
+      mostrar("Ingresa el nombre del producto", true);
       return;
     }
-    const res = registrarUsuario(userForm);
-    if (res.ok) {
-      mostrar("Usuario creado correctamente.", false);
-      setUserForm({ ...userForm, nombreCompleto: "", correo: "" });
+
+    // 2. Validar que el precio no sea negativo
+    if (formProducto.precio < 0) {
+      mostrar("El precio no puede ser un valor negativo", true);
+      return;
+    }
+
+    // 3. Validar que el stock no sea negativo
+    if (formProducto.stock < 0) {
+      mostrar("El stock no puede ser un valor negativo", true);
+      return;
+    }
+
+    if (productoEditando) {
+      const res = actualizarProducto({
+        ...productoEditando,
+        nombre: formProducto.nombre,
+        descripcion: formProducto.descripcion,
+        precio: formProducto.precio,
+        stock: formProducto.stock,
+        categoria: formProducto.categoria,
+        imagen: formProducto.imagen,
+      });
+      mostrar(res.mensaje || "", !res.ok);
     } else {
-      mostrar(res.mensaje || "Error al crear usuario.");
+      const res = crearProducto({
+        nombre: formProducto.nombre,
+        descripcion: formProducto.descripcion,
+        precio: formProducto.precio,
+        stock: formProducto.stock,
+        categoria: formProducto.categoria,
+        imagen: formProducto.imagen,
+      });
+      mostrar(res.mensaje || "", !res.ok);
     }
+
+    handleCancelarEditarProducto();
   };
 
-  const handleCrearProducto = (e: React.FormEvent) => {
+  const handleEliminarProducto = (id: string) => {
+    const res = eliminarProducto(id);
+    mostrar(res.mensaje || "", !res.ok);
+  };
+
+  // ==========================================
+  // ESTADOS Y HANDLERS: CATEGORÍAS
+  // ==========================================
+  const [categoriaEditando, setCategoriaEditando] = useState<Categoria | null>(
+    null,
+  );
+  const [formCategoria, setFormCategoria] = useState({
+    nombre: "",
+    descripcion: "",
+  });
+
+  const handleSeleccionarEditarCategoria = (c: Categoria) => {
+    setCategoriaEditando(c);
+    setFormCategoria({
+      nombre: c.nombre,
+      descripcion: c.descripcion || "",
+    });
+  };
+
+  const handleCancelarEditarCategoria = () => {
+    setCategoriaEditando(null);
+    setFormCategoria({ nombre: "", descripcion: "" });
+  };
+
+  const handleGuardarCategoria = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prodForm.nombre) {
-      mostrar("El nombre del producto es obligatorio.");
+    if (!formCategoria.nombre.trim()) {
+      mostrar("Ingresa el nombre de la categoría", true);
       return;
     }
-    const res = crearProducto(prodForm);
-    mostrar(res.mensaje || "", !res.ok);
-    if (res.ok) setProdForm({ ...prodForm, nombre: "", descripcion: "" });
+
+    if (categoriaEditando) {
+      const res = actualizarCategoria({
+        ...categoriaEditando,
+        nombre: formCategoria.nombre.trim(),
+        descripcion: formCategoria.descripcion.trim(),
+      });
+      mostrar(res.mensaje || "", !res.ok);
+    } else {
+      const res = crearCategoria({
+        nombre: formCategoria.nombre.trim(),
+        descripcion: formCategoria.descripcion.trim(),
+      });
+      mostrar(res.mensaje || "", !res.ok);
+    }
+
+    handleCancelarEditarCategoria();
   };
 
-  const handleCrearCategoria = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!catNombre.trim()) return;
-    const res = crearCategoria({ nombre: catNombre });
+  const handleEliminarCategoria = (id: string) => {
+    const res = eliminarCategoria(id);
     mostrar(res.mensaje || "", !res.ok);
-    if (res.ok) setCatNombre("");
   };
 
   return (
-    <main className="container my-5">
+    <main className="container my-4">
       <h2 className="border-bottom border-warning border-3 d-inline-block pb-1 mb-4">
         Panel de Administración ⚙️
       </h2>
 
-      <Alerta alerta={alerta} />
+      <Alerta alerta={alerta} className="mb-3" />
 
-      <ul className="nav nav-tabs mb-4">
+      {/* Navegación por pestañas */}
+      <ul className="nav nav-tabs mb-4 fw-bold">
         <li className="nav-item">
           <button
-            className={`nav-link fw-bold ${pestana === "usuarios" ? "active" : ""}`}
-            onClick={() => setPestana("usuarios")}
+            className={`nav-link ${pestanaActiva === "usuarios" ? "active text-dark bg-white border-bottom-0" : "text-primary"}`}
+            onClick={() => setPestanaActiva("usuarios")}
           >
             Usuarios y Roles
           </button>
         </li>
         <li className="nav-item">
           <button
-            className={`nav-link fw-bold ${pestana === "productos" ? "active" : ""}`}
-            onClick={() => setPestana("productos")}
+            className={`nav-link ${pestanaActiva === "productos" ? "active text-dark bg-white border-bottom-0" : "text-primary"}`}
+            onClick={() => setPestanaActiva("productos")}
           >
             Gestión de Productos
           </button>
         </li>
         <li className="nav-item">
           <button
-            className={`nav-link fw-bold ${pestana === "categorias" ? "active" : ""}`}
-            onClick={() => setPestana("categorias")}
+            className={`nav-link ${pestanaActiva === "categorias" ? "active text-dark bg-white border-bottom-0" : "text-primary"}`}
+            onClick={() => setPestanaActiva("categorias")}
           >
             Gestión de Categorías
           </button>
         </li>
       </ul>
 
-      {/* PESTAÑA USUARIOS */}
-      {pestana === "usuarios" && (
+      {/* PESTAÑA 1: USUARIOS */}
+      {pestanaActiva === "usuarios" && (
         <div className="row g-4">
           <div className="col-md-5">
-            <div className="card p-3 shadow-sm">
-              <h5 className="fw-bold mb-3">Crear Usuario / Asignar Rol</h5>
-              <form onSubmit={handleCrearUsuario}>
-                <div className="mb-2">
-                  <label className="form-label small">Nombre Completo</label>
+            <div className="card shadow-sm p-4">
+              <h5 className="fw-bold mb-3">
+                {usuarioEditando
+                  ? "✏️ Editar Usuario"
+                  : "Crear Usuario / Asignar Rol"}
+              </h5>
+              <form onSubmit={handleGuardarUsuario}>
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">
+                    Nombre Completo
+                  </label>
                   <input
                     type="text"
                     className="form-control"
-                    value={userForm.nombreCompleto}
+                    value={formUsuario.nombreCompleto}
                     onChange={(e) =>
-                      setUserForm({
-                        ...userForm,
+                      setFormUsuario({
+                        ...formUsuario,
                         nombreCompleto: e.target.value,
                       })
                     }
                   />
                 </div>
-                <div className="mb-2">
-                  <label className="form-label small">Correo</label>
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">Correo</label>
                   <input
                     type="email"
                     className="form-control"
-                    value={userForm.correo}
+                    value={formUsuario.correo}
                     onChange={(e) =>
-                      setUserForm({ ...userForm, correo: e.target.value })
+                      setFormUsuario({ ...formUsuario, correo: e.target.value })
                     }
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label small fw-bold">
+                  <label className="form-label small fw-semibold">
                     Rol a Asignar
                   </label>
                   <select
                     className="form-select"
-                    value={userForm.rol}
+                    value={formUsuario.rol}
                     onChange={(e) =>
-                      setUserForm({
-                        ...userForm,
+                      setFormUsuario({
+                        ...formUsuario,
                         rol: e.target.value as RolUsuario,
                       })
                     }
@@ -172,106 +327,141 @@ export default function Admin() {
                     <option value="administrador">Administrador</option>
                   </select>
                 </div>
-                <button type="submit" className="btn btn-warning w-100 fw-bold">
-                  Crear Usuario
-                </button>
+                <div className="d-flex gap-2">
+                  <button
+                    type="submit"
+                    className="btn btn-warning fw-bold w-100"
+                  >
+                    {usuarioEditando ? "Actualizar Usuario" : "Crear Usuario"}
+                  </button>
+                  {usuarioEditando && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={handleCancelarEditarUsuario}
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
           </div>
 
           <div className="col-md-7">
-            <div className="card shadow-sm p-3 table-responsive">
+            <div className="card shadow-sm p-4">
               <h5 className="fw-bold mb-3">Usuarios Registrados</h5>
-              <table className="table table-hover align-middle">
-                <thead>
-                  <tr>
-                    <th>Nombre</th>
-                    <th>Correo</th>
-                    <th>Rol</th>
-                    <th>Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {usuarios.map((u) => (
-                    <tr key={u.id}>
-                      <td>{u.nombreCompleto}</td>
-                      <td>{u.correo}</td>
-                      <td>
-                        <span className="badge bg-secondary text-capitalize">
-                          {u.rol}
-                        </span>
-                      </td>
-                      <td>
-                        <button
-                          onClick={() => eliminarUsuario(u.id)}
-                          className="btn btn-sm btn-outline-danger"
-                          disabled={u.id === usuarioActivo.id}
-                        >
-                          Eliminar
-                        </button>
-                      </td>
+              <div className="table-responsive">
+                <table className="table align-middle">
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Correo</th>
+                      <th>Rol</th>
+                      <th className="text-end">Acciones</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {usuarios.map((u) => (
+                      <tr key={u.id}>
+                        <td>{u.nombreCompleto}</td>
+                        <td className="small">{u.correo}</td>
+                        <td>
+                          <span className="badge bg-secondary text-capitalize">
+                            {u.rol}
+                          </span>
+                        </td>
+                        <td className="text-end">
+                          <button
+                            className="btn btn-outline-primary btn-sm me-1"
+                            onClick={() => handleSeleccionarEditarUsuario(u)}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            className="btn btn-outline-danger btn-sm"
+                            onClick={() => handleEliminarUsuario(u.id)}
+                          >
+                            Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* PESTAÑA PRODUCTOS */}
-      {pestana === "productos" && (
+      {/* PESTAÑA 2: PRODUCTOS */}
+      {pestanaActiva === "productos" && (
         <div className="row g-4">
           <div className="col-md-5">
-            <div className="card p-3 shadow-sm">
-              <h5 className="fw-bold mb-3">Nuevo Producto</h5>
-              <form onSubmit={handleCrearProducto}>
-                <div className="mb-2">
-                  <label className="form-label small">Nombre</label>
+            <div className="card shadow-sm p-4">
+              <h5 className="fw-bold mb-3">
+                {productoEditando ? "✏️ Editar Producto" : "Nuevo Producto"}
+              </h5>
+              <form onSubmit={handleGuardarProducto}>
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">Nombre</label>
                   <input
                     type="text"
                     className="form-control"
-                    value={prodForm.nombre}
+                    value={formProducto.nombre}
                     onChange={(e) =>
-                      setProdForm({ ...prodForm, nombre: e.target.value })
+                      setFormProducto({
+                        ...formProducto,
+                        nombre: e.target.value,
+                      })
                     }
                   />
                 </div>
-                <div className="mb-2">
-                  <label className="form-label small">Descripción</label>
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">
+                    Descripción
+                  </label>
                   <input
                     type="text"
                     className="form-control"
-                    value={prodForm.descripcion}
+                    value={formProducto.descripcion}
                     onChange={(e) =>
-                      setProdForm({ ...prodForm, descripcion: e.target.value })
+                      setFormProducto({
+                        ...formProducto,
+                        descripcion: e.target.value,
+                      })
                     }
                   />
                 </div>
-                <div className="row g-2 mb-2">
+                <div className="row g-2 mb-3">
                   <div className="col-6">
-                    <label className="form-label small">Precio ($)</label>
+                    <label className="form-label small fw-semibold">
+                      Precio ($)
+                    </label>
                     <input
                       type="number"
                       className="form-control"
-                      value={prodForm.precio}
+                      value={formProducto.precio}
                       onChange={(e) =>
-                        setProdForm({
-                          ...prodForm,
+                        setFormProducto({
+                          ...formProducto,
                           precio: Number(e.target.value),
                         })
                       }
                     />
                   </div>
                   <div className="col-6">
-                    <label className="form-label small">Stock Inicial</label>
+                    <label className="form-label small fw-semibold">
+                      Stock Inicial
+                    </label>
                     <input
                       type="number"
                       className="form-control"
-                      value={prodForm.stock}
+                      value={formProducto.stock}
                       onChange={(e) =>
-                        setProdForm({
-                          ...prodForm,
+                        setFormProducto({
+                          ...formProducto,
                           stock: Number(e.target.value),
                         })
                       }
@@ -279,104 +469,185 @@ export default function Admin() {
                   </div>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label small">Categoría</label>
+                  <label className="form-label small fw-semibold">
+                    Categoría
+                  </label>
                   <select
                     className="form-select"
-                    value={prodForm.categoria}
+                    value={formProducto.categoria}
                     onChange={(e) =>
-                      setProdForm({ ...prodForm, categoria: e.target.value })
+                      setFormProducto({
+                        ...formProducto,
+                        categoria: e.target.value,
+                      })
                     }
                   >
-                    {categorias.map((c) => (
-                      <option key={c.id || c.nombre} value={c.nombre}>
-                        {c.nombre}
+                    {categorias.map((cat) => (
+                      <option key={cat.id} value={cat.nombre}>
+                        {cat.nombre}
                       </option>
                     ))}
                   </select>
                 </div>
-                <button type="submit" className="btn btn-warning w-100 fw-bold">
-                  Guardar Producto
-                </button>
+                <div className="d-flex gap-2">
+                  <button
+                    type="submit"
+                    className="btn btn-warning fw-bold w-100"
+                  >
+                    {productoEditando
+                      ? "Actualizar Producto"
+                      : "Guardar Producto"}
+                  </button>
+                  {productoEditando && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={handleCancelarEditarProducto}
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
           </div>
 
           <div className="col-md-7">
-            <div className="card shadow-sm p-3 table-responsive">
+            <div className="card shadow-sm p-4">
               <h5 className="fw-bold mb-3">Catálogo Existente</h5>
-              <table className="table table-hover align-middle">
-                <thead>
-                  <tr>
-                    <th>Producto</th>
-                    <th>Precio</th>
-                    <th>Stock</th>
-                    <th>Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {productos.map((p) => (
-                    <tr key={p.id}>
-                      <td>{p.nombre}</td>
-                      <td>${clp(p.precio)}</td>
-                      <td>{p.stock}</td>
-                      <td>
-                        <button
-                          onClick={() => eliminarProducto(p.id)}
-                          className="btn btn-sm btn-outline-danger"
-                        >
-                          Eliminar
-                        </button>
-                      </td>
+              <div className="table-responsive">
+                <table className="table align-middle">
+                  <thead>
+                    <tr>
+                      <th>Producto</th>
+                      <th>Precio</th>
+                      <th>Stock</th>
+                      <th className="text-end">Acciones</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {productos.map((p) => (
+                      <tr key={p.id}>
+                        <td>{p.nombre}</td>
+                        <td>${clp(p.precio)}</td>
+                        <td>{p.stock}</td>
+                        <td className="text-end">
+                          <button
+                            className="btn btn-outline-primary btn-sm me-1"
+                            onClick={() => handleSeleccionarEditarProducto(p)}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            className="btn btn-outline-danger btn-sm"
+                            onClick={() => handleEliminarProducto(p.id)}
+                          >
+                            Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* PESTAÑA CATEGORÍAS */}
-      {pestana === "categorias" && (
+      {/* PESTAÑA 3: CATEGORÍAS */}
+      {pestanaActiva === "categorias" && (
         <div className="row g-4">
           <div className="col-md-5">
-            <div className="card p-3 shadow-sm">
-              <h5 className="fw-bold mb-3">Nueva Categoría</h5>
-              <form onSubmit={handleCrearCategoria}>
+            <div className="card shadow-sm p-4">
+              <h5 className="fw-bold mb-3">
+                {categoriaEditando ? "✏️ Editar Categoría" : "Nueva Categoría"}
+              </h5>
+              <form onSubmit={handleGuardarCategoria}>
                 <div className="mb-3">
-                  <label className="form-label small">
+                  <label className="form-label small fw-semibold">
                     Nombre de Categoría
                   </label>
                   <input
                     type="text"
                     className="form-control"
-                    value={catNombre}
-                    onChange={(e) => setCatNombre(e.target.value)}
+                    value={formCategoria.nombre}
+                    onChange={(e) =>
+                      setFormCategoria({
+                        ...formCategoria,
+                        nombre: e.target.value,
+                      })
+                    }
                   />
                 </div>
-                <button type="submit" className="btn btn-warning w-100 fw-bold">
-                  Agregar Categoría
-                </button>
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">
+                    Descripción
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={formCategoria.descripcion}
+                    onChange={(e) =>
+                      setFormCategoria({
+                        ...formCategoria,
+                        descripcion: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="d-flex gap-2">
+                  <button
+                    type="submit"
+                    className="btn btn-warning fw-bold w-100"
+                  >
+                    {categoriaEditando
+                      ? "Actualizar Categoría"
+                      : "Agregar Categoría"}
+                  </button>
+                  {categoriaEditando && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={handleCancelarEditarCategoria}
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
           </div>
 
           <div className="col-md-7">
-            <div className="card shadow-sm p-3">
+            <div className="card shadow-sm p-4">
               <h5 className="fw-bold mb-3">Categorías Registradas</h5>
               <ul className="list-group">
-                {categorias.map((c) => (
+                {categorias.map((cat) => (
                   <li
-                    key={c.id}
+                    key={cat.id}
                     className="list-group-item d-flex justify-content-between align-items-center"
                   >
-                    {c.nombre}
-                    <button
-                      onClick={() => eliminarCategoria(c.id)}
-                      className="btn btn-sm btn-outline-danger"
-                    >
-                      Eliminar
-                    </button>
+                    <div>
+                      <span className="fw-bold d-block">{cat.nombre}</span>
+                      {cat.descripcion && (
+                        <small className="text-muted">{cat.descripcion}</small>
+                      )}
+                    </div>
+                    <div>
+                      <button
+                        className="btn btn-outline-primary btn-sm me-1"
+                        onClick={() => handleSeleccionarEditarCategoria(cat)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        className="btn btn-outline-danger btn-sm"
+                        onClick={() => handleEliminarCategoria(cat.id)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>

@@ -92,7 +92,13 @@ export default function Catalogo() {
         </div>
       </div>
 
-      <Alerta alerta={alerta} className="" />
+      {/* 🔔 Alerta Flotante Fija (Siempre visible al hacer scroll) */}
+      <div
+        className="position-fixed bottom-0 start-50 translate-middle-x mb-4 px-3"
+        style={{ zIndex: 1100, maxWidth: "600px", width: "90%" }}
+      >
+        <Alerta alerta={alerta} className="shadow-lg border border-2 mb-0" />
+      </div>
 
       <div className="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
         {filtrados.length === 0 ? (
