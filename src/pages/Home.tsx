@@ -44,7 +44,7 @@ export default function Home() {
         <h2 className="border-bottom border-warning border-3 d-inline-block pb-1 my-4">
           Ofertas Destacadas 🔥
         </h2>
-        <div className="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+        <div className="row row-cols-1 row-cols-md-5 row-cols-lg-3 g-4">
           {destacados.map((p) => (
             <ProductCard
               key={p.id}
@@ -53,6 +53,22 @@ export default function Home() {
               onAgregar={agregar}
             />
           ))}
+        </div>
+      </section>
+      <section className="mb-5">
+        <h2 className="border-bottom border-warning border-3 d-inline-block pb-1 mb-4">
+          Quiénes Somos
+        </h2>
+        <div className="card shadow-sm p-4">
+          <p className="card-text">
+            <strong>Ferretería Los Maestros</strong> es una empresa dedicada a
+            abastecer a maestros, constructoras y familias con productos de
+            calidad comprobada para sus proyectos de edificación y remodelación.
+          </p>
+          <p className="card-text mb-0">
+            Nuestro propósito es facilitar el acceso a insumos de ferretería con
+            los mejores precios y una atención personalizada.
+          </p>
         </div>
       </section>
 
