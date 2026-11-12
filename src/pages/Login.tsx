@@ -1,36 +1,55 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { useStore } from "../context/StoreContext";
-import Alerta, { useAlerta } from "../components/Alerta";
+import { useAlerta } from "../hooks/useAlerta";
+import { useRedireccion } from "../hooks/useRedireccion";
+import { rutaInicialPorRol } from "../utils/permisos";
+import {
+  CamposLogin,
+  ErroresLogin,
+  validarLogin,
+} from "../utils/validaciones";
+import Alerta from "../components/Alerta";
+import CampoFormulario, { claseControl } from "../components/CampoFormulario";
+
+// Cuentas de demostración (una por rol): al pulsarlas se completa el formulario,
+// pero el ingreso sigue pasando por la validación y la autenticación normales.
+const CUENTAS_DEMO: { rol: string; correo: string; contrasena: string }[] = [
+  { rol: "Administrador", correo: "admin@ferreteria.cl", contrasena: "123456" },
+  { rol: "Vendedor", correo: "vendedor@ferreteria.cl", contrasena: "123456" },
+  { rol: "Cliente", correo: "cliente@ferreteria.cl", contrasena: "123456" },
+];
 
 export default function Login() {
-  const { usuarios, setUsuarioActivo } = useStore();
-  const { alerta, mostrar } = useAlerta();
-  const navigate = useNavigate();
+  const { iniciarSesion } = useStore();
+  const { alerta, mostrarRespuesta } = useAlerta(0);
+  const redirigir = useRedireccion();
+  const location = useLocation();
+  const desde = (location.state as { desde?: string } | null)?.desde;
 
-  const [correo, setCorreo] = useState("");
-  const [contrasena, setContrasena] = useState("");
+  const [form, setForm] = useState<CamposLogin>({ correo: "", contrasena: "" });
+  const [errores, setErrores] = useState<ErroresLogin>({});
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    if (errores[name as keyof CamposLogin]) {
+      setErrores((prev) => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!correo.trim() || !contrasena) {
-      mostrar("Por favor ingresa tu correo y contraseña.");
-      return;
-    }
+    const erroresEncontrados = validarLogin(form);
+    setErrores(erroresEncontrados);
+    if (Object.keys(erroresEncontrados).length > 0) return;
 
-    const usuarioEncontrado = usuarios.find(
-      (u) =>
-        u.correo.toLowerCase() === correo.trim().toLowerCase() &&
-        u.contrasena === contrasena,
-    );
-
-    if (usuarioEncontrado) {
-      setUsuarioActivo(usuarioEncontrado);
-      mostrar(`¡Bienvenido/a ${usuarioEncontrado.nombreCompleto}!`, false);
-      setTimeout(() => navigate("/perfil"), 1000);
-    } else {
-      mostrar("Credenciales incorrectas. Revisa el correo y la contraseña.");
+    const res = iniciarSesion(form.correo, form.contrasena);
+    mostrarRespuesta(res);
+    if (res.ok && res.usuario) {
+      // Vuelve a la página que se intentó abrir; si no hubo una, va al inicio del rol
+      redirigir(desde ?? rutaInicialPorRol(res.usuario.rol), 1000);
     }
   };
 
@@ -43,27 +62,41 @@ export default function Login() {
 
         <Alerta alerta={alerta} />
 
-        <form onSubmit={handleLogin}>
-          <div className="mb-3">
-            <label className="form-label fw-semibold">Correo Electrónico</label>
+        <form onSubmit={handleLogin} noValidate>
+          <CampoFormulario
+            id="login-correo"
+            etiqueta="Correo Electrónico"
+            error={errores.correo}
+            className="mb-3"
+          >
             <input
+              id="login-correo"
+              name="correo"
               type="email"
-              className="form-control"
-              value={correo}
-              onChange={(e) => setCorreo(e.target.value)}
+              autoComplete="username"
+              className={claseControl("form-control", errores.correo)}
+              value={form.correo}
+              onChange={handleChange}
               placeholder="correo@ejemplo.com"
             />
-          </div>
+          </CampoFormulario>
 
-          <div className="mb-4">
-            <label className="form-label fw-semibold">Contraseña</label>
+          <CampoFormulario
+            id="login-contrasena"
+            etiqueta="Contraseña"
+            error={errores.contrasena}
+            className="mb-4"
+          >
             <input
+              id="login-contrasena"
+              name="contrasena"
               type="password"
-              className="form-control"
-              value={contrasena}
-              onChange={(e) => setContrasena(e.target.value)}
+              autoComplete="current-password"
+              className={claseControl("form-control", errores.contrasena)}
+              value={form.contrasena}
+              onChange={handleChange}
             />
-          </div>
+          </CampoFormulario>
 
           <button
             type="submit"
@@ -76,6 +109,26 @@ export default function Login() {
             ¿No tienes cuenta? <Link to="/registro">Regístrate aquí</Link>
           </p>
         </form>
+
+        <hr className="my-4" />
+        <p className="small text-muted mb-2 text-center">
+          Cuentas de demostración (clic para completar el formulario):
+        </p>
+        <div className="d-flex gap-2 justify-content-center flex-wrap">
+          {CUENTAS_DEMO.map((c) => (
+            <button
+              key={c.rol}
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={() => {
+                setForm({ correo: c.correo, contrasena: c.contrasena });
+                setErrores({});
+              }}
+            >
+              {c.rol}
+            </button>
+          ))}
+        </div>
       </div>
     </main>
   );
