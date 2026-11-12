@@ -22,4 +22,9 @@ export const categoriasSemilla: Categoria[] = [
     nombre: "Gasfitería y Tubos",
     descripcion: "Tuberías y conexiones de PVC/Cobre",
   },
+  {
+    id: "cat-5",
+    nombre: "Seguridad",
+    descripcion: "Guantes, mascarillas y antiparraz",
+  },
 ];

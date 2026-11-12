@@ -47,7 +47,8 @@ export const productosSemilla: Producto[] = [
     nombre: "Saco Cemento Polpaico 25 kg",
     descripcion:
       "Cemento especial para albañilería y hormigón de alta durabilidad.",
-    precio: 4990,
+    precio: 5990,
+    precioOferta: 5090,
     stock: 50,
     categoria: "Materiales de Construcción",
     imagen: "/IMG/polpaico.jpg",
@@ -80,5 +81,23 @@ export const productosSemilla: Producto[] = [
     stock: 12,
     categoria: "Gasfitería y Tubos",
     imagen: "/IMG/cable.jpg",
+  },
+  {
+    id: "prod-9",
+    nombre: "Cemento Melón blanco 25 kg",
+    descripcion: "Ideal para terminaciones estéticas y morteros de pega.",
+    precio: 7490,
+    stock: 34,
+    categoria: "Materiales de Construcción",
+    imagen: "/IMG/melon.jpg",
+  },
+  {
+    id: "prod-10",
+    nombre: "Mascarilla respirador N95 (caja x10)",
+    descripcion: "Protección respiratoria contra partículas finas y polvos.",
+    precio: 10990,
+    stock: 20,
+    categoria: "Seguridad",
+    imagen: "/IMG/mascarilla.jpg",
   },
 ];
