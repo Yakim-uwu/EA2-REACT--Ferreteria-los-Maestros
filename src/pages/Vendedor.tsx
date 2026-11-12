@@ -1,158 +1,94 @@
 import React, { useState } from "react";
-import { Navigate } from "react-router-dom";
 import { useStore } from "../context/StoreContext";
-import { GeneroUsuario } from "../types";
-import { clp } from "../utils/format";
-import Alerta, { useAlerta } from "../components/Alerta";
+import { useAlerta } from "../hooks/useAlerta";
+import { DatosUsuario, RespuestaOperacion } from "../types";
+import Alerta from "../components/Alerta";
+import FormularioUsuario from "../components/FormularioUsuario";
+import PanelStock from "../components/PanelStock";
+import PanelVentas from "../components/PanelVentas";
+import Pestanas, { Pestana } from "../components/Pestanas";
+import TituloPagina from "../components/TituloPagina";
 
+type IdPestanaVendedor = "stock" | "clientes" | "ventas";
+
+const PESTANAS: Pestana<IdPestanaVendedor>[] = [
+  { id: "stock", titulo: "Stock" },
+  { id: "clientes", titulo: "Registrar Clientes" },
+  { id: "ventas", titulo: "Ventas" },
+];
+
+// El acceso por rol se controla en App.tsx con <RutaProtegida roles={["vendedor", "administrador"]} />
 export default function Vendedor() {
-  const { usuarioActivo, productos, modificarStockProducto, registrarUsuario } =
-    useStore();
+  const { usuarios, registrarUsuario } = useStore();
+  const { alerta, mostrarRespuesta, limpiar } = useAlerta();
+  const [activa, setActiva] = useState<IdPestanaVendedor>("stock");
 
-  const { alerta, mostrar } = useAlerta();
+  const clientes = usuarios.filter((u) => u.rol === "cliente");
 
-  // Registro exclusivo de cliente con todos los campos requeridos por la interfaz Usuario
-  const [clienteForm, setClienteForm] = useState({
-    nombreCompleto: "",
-    correo: "",
-    fechaNacimiento: "2000-01-01",
-    direccion: "Sin Dirección",
-    region: "Metropolitana",
-    genero: "prefiero_no_decir" as GeneroUsuario, // Campo requerido por la interfaz Usuario
-    contrasena: "123456",
-  });
-
-  if (
-    !usuarioActivo ||
-    (usuarioActivo.rol !== "vendedor" && usuarioActivo.rol !== "administrador")
-  ) {
-    return <Navigate to="/404" replace />;
-  }
-
-  const handleCrearCliente = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!clienteForm.nombreCompleto.trim() || !clienteForm.correo.trim()) {
-      mostrar("Completa el nombre y correo del cliente.");
-      return;
-    }
-
-    // Restricción explícita: el vendedor crea exclusivamente rol 'cliente'
-    const res = registrarUsuario({
-      ...clienteForm,
-      rol: "cliente",
-    });
-
-    mostrar(res.mensaje || "", !res.ok);
-    if (res.ok) {
-      setClienteForm({
-        ...clienteForm,
-        nombreCompleto: "",
-        correo: "",
-      });
-    }
-  };
-
-  const handleStockChange = (id: string, nuevoStockStr: string) => {
-    const num = parseInt(nuevoStockStr, 10);
-    if (!isNaN(num) && num >= 0) {
-      modificarStockProducto(id, num);
-    }
+  // Restricción de negocio: el vendedor crea exclusivamente cuentas con rol "cliente"
+  const handleCrearCliente = (datos: DatosUsuario): RespuestaOperacion => {
+    const res = registrarUsuario({ ...datos, rol: "cliente" });
+    mostrarRespuesta(res);
+    return res;
   };
 
   return (
     <main className="container my-5">
-      <h2 className="border-bottom border-warning border-3 d-inline-block pb-1 mb-4">
-        Panel de Gestión de Ventas 📦
-      </h2>
+      <TituloPagina>Panel de Gestión de Ventas 📦</TituloPagina>
 
-      <Alerta alerta={alerta} />
+      <Pestanas pestanas={PESTANAS} activa={activa} onCambiar={setActiva} />
 
-      <div className="row g-4 mb-5">
-        <div className="col-lg-4">
-          <div className="card shadow-sm p-3">
-            <h5 className="fw-bold mb-3">Registrar Nuevo Cliente</h5>
-            <small className="text-muted d-block mb-3">
-              Nota: Como vendedor solo puedes registrar cuentas con rol Cliente.
-            </small>
+      {activa === "stock" && <PanelStock />}
 
-            <form onSubmit={handleCrearCliente}>
-              <div className="mb-2">
-                <label className="form-label small">Nombre Completo</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={clienteForm.nombreCompleto}
-                  onChange={(e) =>
-                    setClienteForm({
-                      ...clienteForm,
-                      nombreCompleto: e.target.value,
-                    })
-                  }
-                />
+      {activa === "clientes" && (
+        <div className="row g-4">
+          <div className="col-lg-6">
+            <div className="card shadow-sm p-4">
+              <h5 className="fw-bold mb-1">Registrar Nuevo Cliente</h5>
+              <small className="text-muted d-block mb-3">
+                Como vendedor solo puedes registrar cuentas con rol Cliente.
+              </small>
+              <Alerta alerta={alerta} className="mb-3" onCerrar={limpiar} />
+              <FormularioUsuario
+                modo="alta"
+                rolFijo="cliente"
+                textoBoton="Registrar Cliente"
+                onGuardar={handleCrearCliente}
+              />
+            </div>
+          </div>
+
+          <div className="col-lg-6">
+            <div className="card shadow-sm p-4">
+              <h5 className="fw-bold mb-3">
+                Clientes Registrados ({clientes.length})
+              </h5>
+              <div className="table-responsive">
+                <table className="table table-sm align-middle">
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Correo</th>
+                      <th>Región</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clientes.map((c) => (
+                      <tr key={c.id}>
+                        <td>{c.nombreCompleto}</td>
+                        <td className="small">{c.correo}</td>
+                        <td className="small">{c.region}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-
-              <div className="mb-3">
-                <label className="form-label small">Correo Electrónico</label>
-                <input
-                  type="email"
-                  className="form-control"
-                  value={clienteForm.correo}
-                  onChange={(e) =>
-                    setClienteForm({ ...clienteForm, correo: e.target.value })
-                  }
-                />
-              </div>
-
-              <button type="submit" className="btn btn-warning w-100 fw-bold">
-                Registrar Cliente
-              </button>
-            </form>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="col-lg-8">
-          <div className="card shadow-sm p-3 table-responsive">
-            <h5 className="fw-bold mb-3">Consulta y Actualización de Stock</h5>
-            <table className="table table-hover align-middle">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Precio</th>
-                  <th>Stock Actual</th>
-                  <th>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {productos.map((p) => (
-                  <tr key={p.id}>
-                    <td>
-                      <span className="fw-semibold">{p.nombre}</span>
-                      <br />
-                      <small className="text-muted">{p.categoria}</small>
-                    </td>
-                    <td>${clp(p.precio)}</td>
-                    <td>
-                      <input
-                        type="number"
-                        min="0"
-                        className="form-control form-control-sm"
-                        style={{ width: "90px" }}
-                        defaultValue={p.stock}
-                        onBlur={(e) => handleStockChange(p.id, e.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <span className="badge bg-info text-dark">
-                        Modificar en casilla
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      {activa === "ventas" && <PanelVentas />}
     </main>
   );
 }
