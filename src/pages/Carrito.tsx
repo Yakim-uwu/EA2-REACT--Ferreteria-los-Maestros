@@ -1,73 +1,31 @@
-import React, { useEffect, useRef, useState } from "react";
+import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useStore } from "../context/StoreContext";
+import { useAlerta } from "../hooks/useAlerta";
+import { useRedireccion } from "../hooks/useRedireccion";
 import { clp, imgSrc } from "../utils/format";
-import Alerta, { useAlerta } from "../components/Alerta";
-
-interface CantidadInputProps {
-  valor: number;
-  onCommit: (nuevoValor: string) => void;
-}
-
-/** Input numérico que confirma el cambio al salir del campo o presionar Enter. */
-function CantidadInput({ valor, onCommit }: CantidadInputProps) {
-  const [draft, setDraft] = useState<string>(String(valor));
-
-  useEffect(() => {
-    setDraft(String(valor));
-  }, [valor]);
-
-  const confirmar = () => {
-    onCommit(draft);
-    setDraft(String(valor));
-  };
-
-  return (
-    <input
-      type="number"
-      min="1"
-      value={draft}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-        setDraft(e.target.value)
-      }
-      onBlur={confirmar}
-      onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === "Enter") {
-          e.currentTarget.blur();
-        }
-      }}
-      className="form-control form-control-sm"
-      style={{ width: 70 }}
-    />
-  );
-}
+import Alerta from "../components/Alerta";
+import InputCantidad from "../components/InputCantidad";
+import TituloPagina from "../components/TituloPagina";
 
 export default function Carrito() {
   const {
     carrito,
     totalCompra,
+    usuarioActivo,
     modificarCantidad,
     eliminarItem,
     vaciarCarrito,
     finalizarCompra,
   } = useStore();
-  const { alerta, mostrar, limpiar } = useAlerta();
+  const { alerta, mostrar, mostrarRespuesta, limpiar } = useAlerta(0);
+  const redirigir = useRedireccion();
   const navigate = useNavigate();
-  const timer = useRef<number | null>(null);
 
-  useEffect(() => {
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, []);
-
-  const cambiarCantidad = (index: number, valor: string) => {
-    const r = modificarCantidad(index, valor);
-    if (r.ok) {
-      limpiar();
-    } else if (r.mensaje) {
-      mostrar(r.mensaje, true);
-    }
+  const cambiarCantidad = (idProducto: string, valor: string) => {
+    const res = modificarCantidad(idProducto, valor);
+    if (res.ok) limpiar();
+    else mostrarRespuesta(res);
   };
 
   const vaciar = () => {
@@ -76,21 +34,21 @@ export default function Carrito() {
   };
 
   const finalizar = () => {
-    finalizarCompra();
-    mostrar(
-      "¡Compra realizada con éxito! Redirigiendo a la página principal...",
-      false,
-    );
-    timer.current = window.setTimeout(() => navigate("/"), 2000);
+    // Regla de negocio: para comprar hay que haber iniciado sesión
+    if (!usuarioActivo) {
+      navigate("/login", { state: { desde: "/carrito" } });
+      return;
+    }
+    const res = finalizarCompra();
+    mostrarRespuesta(res);
+    if (res.ok) redirigir("/perfil", 2000);
   };
 
   return (
     <main className="container my-5">
-      <h2 className="border-bottom border-warning border-3 d-inline-block pb-1 mb-4">
-        Carrito de Compras
-      </h2>
+      <TituloPagina>Carrito de Compras</TituloPagina>
 
-      <Alerta alerta={alerta} />
+      <Alerta alerta={alerta} onCerrar={limpiar} />
 
       {carrito.length === 0 ? (
         <div className="text-center py-5">
@@ -114,7 +72,7 @@ export default function Carrito() {
                 </tr>
               </thead>
               <tbody>
-                {carrito.map((item, index) => (
+                {carrito.map((item) => (
                   <tr key={item.idProducto}>
                     <td>
                       <div className="d-flex align-items-center gap-3">
@@ -129,9 +87,11 @@ export default function Carrito() {
                     </td>
                     <td>${clp(item.precioUnitario)}</td>
                     <td>
-                      <CantidadInput
+                      <InputCantidad
                         valor={item.cantidad}
-                        onCommit={(v) => cambiarCantidad(index, v)}
+                        etiqueta={`Cantidad de ${item.nombre}`}
+                        ancho={70}
+                        onConfirmar={(v) => cambiarCantidad(item.idProducto, v)}
                       />
                     </td>
                     <td className="fw-bold">
@@ -139,7 +99,8 @@ export default function Carrito() {
                     </td>
                     <td>
                       <button
-                        onClick={() => eliminarItem(index)}
+                        type="button"
+                        onClick={() => eliminarItem(item.idProducto)}
                         className="btn btn-sm btn-danger"
                         aria-label={`Eliminar ${item.nombre}`}
                       >
@@ -157,18 +118,26 @@ export default function Carrito() {
               Total Compra: $
               <span className="text-danger">{clp(totalCompra)}</span>
             </h3>
-            <div className="d-flex justify-content-end gap-2">
+            {!usuarioActivo && (
+              <p className="text-muted small">
+                Debes iniciar sesión para finalizar tu compra. Tu carrito se
+                conserva.
+              </p>
+            )}
+            <div className="d-flex justify-content-end gap-2 flex-wrap">
               <button
+                type="button"
                 onClick={vaciar}
                 className="btn btn-outline-danger fw-bold"
               >
                 Vaciar Carrito
               </button>
               <button
+                type="button"
                 onClick={finalizar}
                 className="btn btn-warning fw-bold px-4"
               >
-                Finalizar Compra
+                {usuarioActivo ? "Finalizar Compra" : "Iniciar Sesión para Comprar"}
               </button>
             </div>
           </div>
