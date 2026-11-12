@@ -1,14 +1,15 @@
 import React, { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useStore } from "../context/StoreContext";
-import { clp, imgSrc, precioEfectivo } from "../utils/format";
-import Alerta, { useAlerta } from "../components/Alerta";
+import { useAgregarAlCarrito } from "../hooks/useAgregarAlCarrito";
+import { clp, imgSrc, precioEfectivo, tieneOferta } from "../utils/format";
+import Alerta from "../components/Alerta";
 
 export default function Detalle() {
   const { id } = useParams<{ id: string }>();
-  const { productos, agregarAlCarrito } = useStore();
+  const { productos } = useStore();
+  const { alerta, limpiar, agregar } = useAgregarAlCarrito();
   const [cantidad, setCantidad] = useState<number>(1);
-  const { alerta, mostrar } = useAlerta();
 
   const producto = productos.find((p) => p.id === id);
 
@@ -24,9 +25,10 @@ export default function Detalle() {
     );
   }
 
-  const handleAgregar = () => {
-    const r = agregarAlCarrito(producto.id, cantidad);
-    mostrar(r.mensaje || "", !r.ok);
+  const cambiarCantidad = (valor: string) => {
+    const numero = Math.floor(Number(valor));
+    const limitado = Math.min(Math.max(1, numero || 1), producto.stock);
+    setCantidad(limitado);
   };
 
   return (
@@ -35,7 +37,7 @@ export default function Detalle() {
         ← Volver al Catálogo
       </Link>
 
-      <Alerta alerta={alerta} />
+      <Alerta alerta={alerta} onCerrar={limpiar} />
 
       <div className="card shadow-sm p-4">
         <div className="row g-4 align-items-center">
@@ -48,9 +50,7 @@ export default function Detalle() {
             />
           </div>
           <div className="col-md-6">
-            <span className="badge bg-secondary mb-2">
-              {producto.categoria}
-            </span>
+            <span className="badge bg-secondary mb-2">{producto.categoria}</span>
             <h2 className="fw-bold">{producto.nombre}</h2>
             <p className="text-muted fs-5">{producto.descripcion}</p>
 
@@ -58,7 +58,7 @@ export default function Detalle() {
               <span className="text-danger fw-bold fs-3 me-2">
                 ${clp(precioEfectivo(producto))}
               </span>
-              {producto.precioOferta && (
+              {tieneOferta(producto) && (
                 <del className="text-muted fs-5">${clp(producto.precio)}</del>
               )}
             </div>
@@ -77,24 +77,25 @@ export default function Detalle() {
             </p>
 
             {producto.stock > 0 && (
-              <div className="d-flex align-items-center gap-3 my-4">
+              <div className="d-flex align-items-center gap-3 my-4 flex-wrap">
                 <label htmlFor="cantSelect" className="fw-bold">
                   Cantidad:
                 </label>
                 <input
                   id="cantSelect"
                   type="number"
-                  min="1"
+                  min={1}
                   max={producto.stock}
                   value={cantidad}
-                  onChange={(e) =>
-                    setCantidad(Math.max(1, Number(e.target.value)))
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    cambiarCantidad(e.target.value)
                   }
                   className="form-control"
                   style={{ width: "90px" }}
                 />
                 <button
-                  onClick={handleAgregar}
+                  type="button"
+                  onClick={() => agregar(producto.id, cantidad)}
                   className="btn btn-warning fw-bold px-4"
                 >
                   🛒 Agregar al Carrito
