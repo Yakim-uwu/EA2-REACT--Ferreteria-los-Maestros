@@ -1,12 +1,5 @@
 import { Producto } from "../types";
 
-export const categorias: string[] = [
-  "Herramientas Manuales",
-  "Pinturas y Esfaltos",
-  "Materiales de Construcción",
-  "Gasitería y Tubos",
-];
-
 export const productosSemilla: Producto[] = [
   {
     id: "prod-1",
@@ -37,7 +30,7 @@ export const productosSemilla: Producto[] = [
     precio: 34990,
     precioOferta: 29990,
     stock: 10,
-    categoria: "Pinturas y Esfaltos",
+    categoria: "Pinturas y Asfaltos",
     imagen: "/IMG/pintura latex.jpg",
   },
   {
@@ -46,7 +39,7 @@ export const productosSemilla: Producto[] = [
     descripcion: "Esmalte anticorrosivo acabado brillante de secado rápido.",
     precio: 18990,
     stock: 18,
-    categoria: "Pinturas y Esfaltos",
+    categoria: "Pinturas y Asfaltos",
     imagen: "/IMG/esmalte.jpg",
   },
   {
@@ -74,7 +67,7 @@ export const productosSemilla: Producto[] = [
     descripcion: "Tubo de PVC para conducción de agua potable a presión.",
     precio: 3290,
     stock: 30,
-    categoria: "Gasitería y Tubos",
+    categoria: "Gasfitería y Tubos",
     imagen: "/IMG/tubo.jpg",
   },
   {
@@ -85,7 +78,7 @@ export const productosSemilla: Producto[] = [
     precio: 28990,
     precioOferta: 24990,
     stock: 12,
-    categoria: "Gasitería y Tubos",
+    categoria: "Gasfitería y Tubos",
     imagen: "/IMG/cable.jpg",
   },
 ];
