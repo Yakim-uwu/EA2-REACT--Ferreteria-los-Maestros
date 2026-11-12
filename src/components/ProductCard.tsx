@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { clp, imgSrc, precioEfectivo } from "../utils/format";
+import { clp, imgSrc, precioEfectivo, tieneOferta } from "../utils/format";
 import { Producto } from "../types";
 
 interface ProductCardProps {
@@ -15,6 +15,7 @@ export default function ProductCard({
   onAgregar,
 }: ProductCardProps) {
   const esCatalogo = variante === "catalogo";
+  const agotado = p.stock <= 0;
 
   return (
     <div className="col">
@@ -37,7 +38,7 @@ export default function ProductCard({
             <>
               <p className="card-text text-danger fw-bold fs-5 mb-1">
                 ${clp(precioEfectivo(p))}
-                {p.precioOferta !== undefined && p.precioOferta > 0 && (
+                {tieneOferta(p) && (
                   <del className="text-muted fs-6 ms-1">${clp(p.precio)}</del>
                 )}
               </p>
@@ -59,11 +60,13 @@ export default function ProductCard({
               {esCatalogo ? "Detalle" : "Ver Detalle"}
             </Link>
             <button
+              type="button"
               onClick={() => onAgregar(p.id)}
               className="btn btn-warning btn-sm"
-              disabled={esCatalogo && p.stock <= 0}
+              disabled={agotado}
+              aria-label={`Agregar ${p.nombre} al carrito`}
             >
-              {esCatalogo && p.stock <= 0 ? "Agotado" : "🛒"}
+              {agotado ? "Agotado" : "🛒"}
             </button>
           </div>
         </div>
