@@ -7,10 +7,12 @@ import ProductCard from "../components/ProductCard";
 import Mapa from "../components/Mapa";
 import FormularioContacto from "../components/FormularioContacto";
 import Alerta from "../components/Alerta";
+import CargandoDatos from "../components/CargandoDatos";
+import ErrorDeCarga from "../components/ErrorDeCarga";
 import TituloPagina from "../components/TituloPagina";
 
 export default function Home() {
-  const { productos } = useStore();
+  const { productos, cargandoCatalogo, errorCatalogo, recargarCatalogo } = useStore();
   const { alerta, limpiar, agregar } = useAgregarAlCarrito();
 
   const destacados = useMemo(
@@ -39,7 +41,11 @@ export default function Home() {
       {/* Ofertas Destacadas */}
       <section className="mb-5">
         <TituloPagina>Ofertas Destacadas 🔥</TituloPagina>
-        {destacados.length === 0 ? (
+        {cargandoCatalogo ? (
+          <CargandoDatos mensaje="Cargando ofertas..." />
+        ) : errorCatalogo ? (
+          <ErrorDeCarga mensaje={errorCatalogo} onReintentar={recargarCatalogo} />
+        ) : destacados.length === 0 ? (
           <p className="text-muted">Por ahora no hay ofertas disponibles.</p>
         ) : (
           <div className="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-4">

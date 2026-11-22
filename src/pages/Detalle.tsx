@@ -4,14 +4,32 @@ import { useStore } from "../context/StoreContext";
 import { useAgregarAlCarrito } from "../hooks/useAgregarAlCarrito";
 import { clp, imgSrc, precioEfectivo, tieneOferta } from "../utils/format";
 import Alerta from "../components/Alerta";
+import CargandoDatos from "../components/CargandoDatos";
+import ErrorDeCarga from "../components/ErrorDeCarga";
 
 export default function Detalle() {
   const { id } = useParams<{ id: string }>();
-  const { productos } = useStore();
+  const { productos, cargandoCatalogo, errorCatalogo, recargarCatalogo } = useStore();
   const { alerta, limpiar, agregar } = useAgregarAlCarrito();
   const [cantidad, setCantidad] = useState<number>(1);
 
   const producto = productos.find((p) => p.id === id);
+
+  if (cargandoCatalogo) {
+    return (
+      <main className="container my-5">
+        <CargandoDatos mensaje="Cargando producto..." />
+      </main>
+    );
+  }
+
+  if (errorCatalogo) {
+    return (
+      <main className="container my-5">
+        <ErrorDeCarga mensaje={errorCatalogo} onReintentar={recargarCatalogo} />
+      </main>
+    );
+  }
 
   if (!producto) {
     return (

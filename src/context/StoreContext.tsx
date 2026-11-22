@@ -18,6 +18,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const sesion = useUsuarios();
   const compras = useCarrito({
     productos: catalogo.productos,
+    catalogoCargado: !catalogo.cargandoCatalogo && catalogo.errorCatalogo === null,
     usuarioActivo: sesion.usuarioActivo,
     descontarStock: catalogo.descontarStock,
   });

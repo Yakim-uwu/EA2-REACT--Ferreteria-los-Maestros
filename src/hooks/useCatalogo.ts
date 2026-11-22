@@ -1,21 +1,39 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Categoria, ItemCarrito, Producto, RespuestaOperacion } from "../types";
-import { productosSemilla } from "../data/productos";
-import { categoriasSemilla } from "../data/categorias";
-import { useLocalStorage } from "./useLocalStorage";
+import { productoService } from "../services/productoService";
+import { categoriaService } from "../services/categoriaService";
+import { mensajeDeError } from "../utils/errores";
 
 const normalizar = (texto: string): string => texto.trim().toLowerCase();
 
 /** Productos y categorías: estado, persistencia y reglas de negocio del catálogo. */
 export function useCatalogo() {
-  const [productos, setProductos] = useLocalStorage<Producto[]>(
-    "productos",
-    productosSemilla,
-  );
-  const [categorias, setCategorias] = useLocalStorage<Categoria[]>(
-    "categorias",
-    categoriasSemilla,
-  );
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [cargandoCatalogo, setCargandoCatalogo] = useState<boolean>(true);
+  const [errorCatalogo, setErrorCatalogo] = useState<string | null>(null);
+
+  // Lee productos y categorías desde el backend (Spring Boot -> MySQL)
+  const recargarCatalogo = useCallback(async (): Promise<void> => {
+    setCargandoCatalogo(true);
+    setErrorCatalogo(null);
+    try {
+      const [listaProductos, listaCategorias] = await Promise.all([
+        productoService.obtenerTodos(),
+        categoriaService.obtenerTodas(),
+      ]);
+      setProductos(listaProductos);
+      setCategorias(listaCategorias);
+    } catch (error) {
+      setErrorCatalogo(mensajeDeError(error));
+    } finally {
+      setCargandoCatalogo(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void recargarCatalogo();
+  }, [recargarCatalogo]);
 
   // --- Productos ---
   const crearProducto = useCallback(
@@ -148,6 +166,9 @@ export function useCatalogo() {
   return {
     productos,
     categorias,
+    cargandoCatalogo,
+    errorCatalogo,
+    recargarCatalogo,
     crearProducto,
     actualizarProducto,
     eliminarProducto,

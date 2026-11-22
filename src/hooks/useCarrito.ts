@@ -12,6 +12,8 @@ import { useLocalStorage } from "./useLocalStorage";
 
 interface ParametrosCarrito {
   productos: Producto[];
+  /** false mientras el catálogo carga o si falló: así no se vacía el carrito por error. */
+  catalogoCargado: boolean;
   usuarioActivo: Usuario | null;
   descontarStock: (items: ItemCarrito[]) => void;
 }
@@ -19,6 +21,7 @@ interface ParametrosCarrito {
 /** Carrito de compras e historial de pedidos. */
 export function useCarrito({
   productos,
+  catalogoCargado,
   usuarioActivo,
   descontarStock,
 }: ParametrosCarrito) {
@@ -37,6 +40,7 @@ export function useCarrito({
   // Mantiene el carrito coherente con el catálogo: si un producto se elimina,
   // se agota o cambia de precio/stock, el carrito se actualiza solo.
   useEffect(() => {
+    if (!catalogoCargado) return;
     setCarrito((prev) => {
       let huboCambios = false;
       const siguiente: ItemCarrito[] = [];
@@ -70,7 +74,7 @@ export function useCarrito({
       }
       return huboCambios ? siguiente : prev;
     });
-  }, [productos, setCarrito]);
+  }, [productos, catalogoCargado, setCarrito]);
 
   const agregarAlCarrito = useCallback(
     (idProducto: string, cantidadDeseada: number = 1): RespuestaOperacion => {
