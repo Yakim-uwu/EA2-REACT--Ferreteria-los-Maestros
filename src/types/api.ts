@@ -92,3 +92,6 @@ export interface ErrorApi {
   detalles?: Record<string, string> | null;
   timestamp: string;
 }
+export interface PedidoRequestApi {
+  items: { productoId: number; cantidad: number }[];
+}

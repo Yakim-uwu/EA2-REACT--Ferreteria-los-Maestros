@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useStore } from "../context/StoreContext";
 import { useAlerta } from "../hooks/useAlerta";
@@ -21,6 +21,7 @@ export default function Carrito() {
   const { alerta, mostrar, mostrarRespuesta, limpiar } = useAlerta(0);
   const redirigir = useRedireccion();
   const navigate = useNavigate();
+  const [procesando, setProcesando] = useState(false);
 
   const cambiarCantidad = (idProducto: string, valor: string) => {
     const res = modificarCantidad(idProducto, valor);
@@ -33,13 +34,15 @@ export default function Carrito() {
     mostrar("El carrito de compras fue vaciado.", false);
   };
 
-  const finalizar = () => {
+  const finalizar = async () => {
     // Regla de negocio: para comprar hay que haber iniciado sesión
     if (!usuarioActivo) {
       navigate("/login", { state: { desde: "/carrito" } });
       return;
     }
-    const res = finalizarCompra();
+    setProcesando(true);
+    const res = await finalizarCompra();
+    setProcesando(false);
     mostrarRespuesta(res);
     if (res.ok) redirigir("/perfil", 2000);
   };
@@ -103,6 +106,7 @@ export default function Carrito() {
                         onClick={() => eliminarItem(item.idProducto)}
                         className="btn btn-sm btn-danger"
                         aria-label={`Eliminar ${item.nombre}`}
+                        disabled={procesando}
                       >
                         ✕
                       </button>
@@ -129,6 +133,7 @@ export default function Carrito() {
                 type="button"
                 onClick={vaciar}
                 className="btn btn-outline-danger fw-bold"
+                disabled={procesando}
               >
                 Vaciar Carrito
               </button>
@@ -136,8 +141,13 @@ export default function Carrito() {
                 type="button"
                 onClick={finalizar}
                 className="btn btn-warning fw-bold px-4"
+                disabled={procesando}
               >
-                {usuarioActivo ? "Finalizar Compra" : "Iniciar Sesión para Comprar"}
+                {procesando
+                  ? "Procesando compra..."
+                  : usuarioActivo
+                    ? "Finalizar Compra"
+                    : "Iniciar Sesión para Comprar"}
               </button>
             </div>
           </div>

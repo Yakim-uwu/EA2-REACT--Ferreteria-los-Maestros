@@ -1,11 +1,14 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useStore } from "../context/StoreContext";
 import TablaPedidos from "./TablaPedidos";
 
-/** Listado de todas las ventas de la tienda (vista de vendedor y administrador). */
 export default function PanelVentas() {
-  const { pedidos } = useStore();
+  const { pedidos, recargarPedidos } = useStore();
   const totalVendido = pedidos.reduce((suma, p) => suma + p.total, 0);
+
+  useEffect(() => {
+    void recargarPedidos();
+  }, [recargarPedidos]);
 
   return (
     <div className="card shadow-sm p-4">

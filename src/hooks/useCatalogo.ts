@@ -16,26 +16,36 @@ export function useCatalogo() {
   const [errorCatalogo, setErrorCatalogo] = useState<string | null>(null);
 
   // Lee productos y categorías desde el backend. "silencioso" refresca sin mostrar el spinner.
-  const cargarCatalogo = useCallback(async (silencioso: boolean): Promise<void> => {
-    if (!silencioso) {
-      setCargandoCatalogo(true);
-      setErrorCatalogo(null);
-    }
-    try {
-      const [listaProductos, listaCategorias] = await Promise.all([
-        productoService.obtenerTodos(),
-        categoriaService.obtenerTodas(),
-      ]);
-      setProductos(listaProductos);
-      setCategorias(listaCategorias);
-    } catch (error) {
-      if (!silencioso) setErrorCatalogo(mensajeDeError(error));
-    } finally {
-      if (!silencioso) setCargandoCatalogo(false);
-    }
-  }, []);
+  const cargarCatalogo = useCallback(
+    async (silencioso: boolean): Promise<void> => {
+      if (!silencioso) {
+        setCargandoCatalogo(true);
+        setErrorCatalogo(null);
+      }
+      try {
+        const [listaProductos, listaCategorias] = await Promise.all([
+          productoService.obtenerTodos(),
+          categoriaService.obtenerTodas(),
+        ]);
+        setProductos(listaProductos);
+        setCategorias(listaCategorias);
+      } catch (error) {
+        if (!silencioso) setErrorCatalogo(mensajeDeError(error));
+      } finally {
+        if (!silencioso) setCargandoCatalogo(false);
+      }
+    },
+    [],
+  );
 
-  const recargarCatalogo = useCallback(() => cargarCatalogo(false), [cargarCatalogo]);
+  const recargarCatalogo = useCallback(
+    () => cargarCatalogo(false),
+    [cargarCatalogo],
+  );
+  const refrescarCatalogo = useCallback(
+    () => cargarCatalogo(true),
+    [cargarCatalogo],
+  );
 
   useEffect(() => {
     void cargarCatalogo(false);
@@ -76,7 +86,11 @@ export function useCatalogo() {
       }
       try {
         const { id, ...datos } = actualizado;
-        const guardado = await productoService.actualizar(id, datos, idCategoria);
+        const guardado = await productoService.actualizar(
+          id,
+          datos,
+          idCategoria,
+        );
         setProductos((prev) => prev.map((p) => (p.id === id ? guardado : p)));
         return { ok: true, mensaje: "Producto actualizado correctamente." };
       } catch (error) {
@@ -100,7 +114,10 @@ export function useCatalogo() {
   );
 
   const modificarStockProducto = useCallback(
-    async (idProducto: string, nuevoStock: number): Promise<RespuestaOperacion> => {
+    async (
+      idProducto: string,
+      nuevoStock: number,
+    ): Promise<RespuestaOperacion> => {
       if (!Number.isInteger(nuevoStock) || nuevoStock < 0) {
         return {
           ok: false,
@@ -108,8 +125,13 @@ export function useCatalogo() {
         };
       }
       try {
-        const actualizado = await productoService.actualizarStock(idProducto, nuevoStock);
-        setProductos((prev) => prev.map((p) => (p.id === idProducto ? actualizado : p)));
+        const actualizado = await productoService.actualizarStock(
+          idProducto,
+          nuevoStock,
+        );
+        setProductos((prev) =>
+          prev.map((p) => (p.id === idProducto ? actualizado : p)),
+        );
         return { ok: true, mensaje: "Stock actualizado correctamente." };
       } catch (error) {
         return { ok: false, mensaje: mensajeDeError(error) };
@@ -119,19 +141,14 @@ export function useCatalogo() {
   );
 
   /** Descuenta del stock lo vendido. Se mantiene local hasta migrar las compras a la API. */
-  const descontarStock = useCallback(
-    (items: ItemCarrito[]): void => {
-      setProductos((prev) =>
-        prev.map((p) => {
-          const item = items.find((i) => i.idProducto === p.id);
-          return item
-            ? { ...p, stock: Math.max(0, p.stock - item.cantidad) }
-            : p;
-        }),
-      );
-    },
-    [],
-  );
+  const descontarStock = useCallback((items: ItemCarrito[]): void => {
+    setProductos((prev) =>
+      prev.map((p) => {
+        const item = items.find((i) => i.idProducto === p.id);
+        return item ? { ...p, stock: Math.max(0, p.stock - item.cantidad) } : p;
+      }),
+    );
+  }, []);
 
   // --- Categorías ---
   const crearCategoria = useCallback(
@@ -182,6 +199,7 @@ export function useCatalogo() {
     cargandoCatalogo,
     errorCatalogo,
     recargarCatalogo,
+    refrescarCatalogo,
     crearProducto,
     actualizarProducto,
     eliminarProducto,

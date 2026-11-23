@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ItemCarrito,
   Pedido,
@@ -6,6 +6,8 @@ import {
   RespuestaOperacion,
   Usuario,
 } from "../types";
+import { pedidoService } from "../services/pedidoService";
+import { mensajeDeError } from "../utils/errores";
 import { precioEfectivo } from "../utils/format";
 import { ETIQUETA_ROL, puedeComprar } from "../utils/permisos";
 import { useLocalStorage } from "./useLocalStorage";
@@ -15,18 +17,18 @@ interface ParametrosCarrito {
   /** false mientras el catálogo carga o si falló: así no se vacía el carrito por error. */
   catalogoCargado: boolean;
   usuarioActivo: Usuario | null;
-  descontarStock: (items: ItemCarrito[]) => void;
+  refrescarCatalogo: () => Promise<void>;
 }
 
-/** Carrito de compras e historial de pedidos. */
+/** Carrito de compras e historial de pedidos conectados al backend. */
 export function useCarrito({
   productos,
   catalogoCargado,
   usuarioActivo,
-  descontarStock,
+  refrescarCatalogo,
 }: ParametrosCarrito) {
   const [carrito, setCarrito] = useLocalStorage<ItemCarrito[]>("carrito", []);
-  const [pedidos, setPedidos] = useLocalStorage<Pedido[]>("pedidos", []);
+  const [pedidos, setPedidos] = useState<Pedido[]>([]);
 
   const totalItems = useMemo(
     () => carrito.reduce((suma, i) => suma + i.cantidad, 0),
@@ -36,6 +38,27 @@ export function useCarrito({
     () => carrito.reduce((suma, i) => suma + i.precioUnitario * i.cantidad, 0),
     [carrito],
   );
+
+  // Carga "Mis compras" (cliente) o "Ventas" (administrador/vendedor) desde MySQL
+  const recargarPedidos = useCallback(async (): Promise<void> => {
+    if (!usuarioActivo) {
+      setPedidos([]);
+      return;
+    }
+    try {
+      const lista =
+        usuarioActivo.rol === "cliente"
+          ? await pedidoService.obtenerMisPedidos()
+          : await pedidoService.obtenerTodos();
+      setPedidos(lista);
+    } catch {
+      setPedidos([]);
+    }
+  }, [usuarioActivo]);
+
+  useEffect(() => {
+    void recargarPedidos();
+  }, [recargarPedidos]);
 
   // Mantiene el carrito coherente con el catálogo: si un producto se elimina,
   // se agota o cambia de precio/stock, el carrito se actualiza solo.
@@ -129,7 +152,10 @@ export function useCarrito({
   );
 
   const modificarCantidad = useCallback(
-    (idProducto: string, nuevaCantidad: number | string): RespuestaOperacion => {
+    (
+      idProducto: string,
+      nuevaCantidad: number | string,
+    ): RespuestaOperacion => {
       const cantidad =
         typeof nuevaCantidad === "string"
           ? Number(nuevaCantidad)
@@ -162,7 +188,7 @@ export function useCarrito({
 
   const vaciarCarrito = useCallback(() => setCarrito([]), [setCarrito]);
 
-  const finalizarCompra = useCallback((): RespuestaOperacion => {
+  const finalizarCompra = useCallback(async (): Promise<RespuestaOperacion> => {
     if (carrito.length === 0) {
       return { ok: false, mensaje: "Tu carrito de compras está vacío." };
     }
@@ -179,7 +205,7 @@ export function useCarrito({
       };
     }
 
-    // Se revalida el stock justo antes de confirmar la compra
+    // Se revalida el stock localmente antes de enviar el pedido
     for (const item of carrito) {
       const prod = productos.find((p) => p.id === item.idProducto);
       if (!prod || prod.stock < item.cantidad) {
@@ -190,35 +216,24 @@ export function useCarrito({
       }
     }
 
-    const pedido: Pedido = {
-      id: `ped-${Date.now()}`,
-      fecha: new Date().toISOString(),
-      idCliente: usuarioActivo.id,
-      nombreCliente: usuarioActivo.nombreCompleto,
-      items: carrito,
-      total: totalCompra,
-    };
-
-    descontarStock(carrito);
-    setPedidos((prev) => [pedido, ...prev]);
-    setCarrito([]);
-    return {
-      ok: true,
-      mensaje: "¡Compra realizada con éxito! Revisa el detalle en tu perfil.",
-    };
-  }, [
-    carrito,
-    productos,
-    usuarioActivo,
-    totalCompra,
-    descontarStock,
-    setPedidos,
-    setCarrito,
-  ]);
+    try {
+      const pedidoCreado = await pedidoService.crear(carrito);
+      setPedidos((prev) => [pedidoCreado, ...prev]);
+      setCarrito([]);
+      await refrescarCatalogo();
+      return {
+        ok: true,
+        mensaje: "¡Compra realizada con éxito! Revisa el detalle en tu perfil.",
+      };
+    } catch (error) {
+      return { ok: false, mensaje: mensajeDeError(error) };
+    }
+  }, [carrito, productos, usuarioActivo, refrescarCatalogo, setCarrito]);
 
   return {
     carrito,
     pedidos,
+    recargarPedidos,
     totalItems,
     totalCompra,
     agregarAlCarrito,

@@ -2,6 +2,8 @@ import {
   Categoria,
   DatosUsuario,
   GeneroUsuario,
+  ItemCarrito,
+  Pedido,
   Producto,
   RolUsuario,
   Usuario,
@@ -9,6 +11,8 @@ import {
 import {
   CategoriaApi,
   CategoriaRequestApi,
+  PedidoApi,
+  PedidoRequestApi,
   ProductoApi,
   ProductoRequestApi,
   UsuarioApi,
@@ -39,7 +43,12 @@ export const productoDesdeApi = (p: ProductoApi): Producto => ({
 });
 
 const ROLES: RolUsuario[] = ["administrador", "vendedor", "cliente"];
-const GENEROS: GeneroUsuario[] = ["masculino", "femenino", "otro", "prefiero_no_decir"];
+const GENEROS: GeneroUsuario[] = [
+  "masculino",
+  "femenino",
+  "otro",
+  "prefiero_no_decir",
+];
 
 export const usuarioDesdeApi = (u: UsuarioApi): Usuario => ({
   id: String(u.id),
@@ -84,7 +93,32 @@ export const productoARequest = (
   categoria: { id: idCategoria },
 });
 
-export const categoriaARequest = (c: Omit<Categoria, "id">): CategoriaRequestApi => ({
+export const categoriaARequest = (
+  c: Omit<Categoria, "id">,
+): CategoriaRequestApi => ({
   nombre: c.nombre,
   descripcion: c.descripcion ?? "",
+});
+export const pedidoDesdeApi = (p: PedidoApi): Pedido => ({
+  id: String(p.id),
+  fecha: p.fecha,
+  idCliente: String(p.clienteId),
+  nombreCliente: p.clienteNombre,
+  total: p.total,
+  items: p.items.map((item) => ({
+    idProducto: String(item.productoId),
+    nombre: item.nombre,
+    precioUnitario: item.precioUnitario,
+    cantidad: item.cantidad,
+    imagen: IMAGEN_POR_DEFECTO,
+  })),
+});
+
+export const carritoAPedidoRequest = (
+  items: ItemCarrito[],
+): PedidoRequestApi => ({
+  items: items.map((item) => ({
+    productoId: Number(item.idProducto),
+    cantidad: item.cantidad,
+  })),
 });
