@@ -27,13 +27,13 @@ export default function PanelStock() {
     );
   }, [productos, busqueda]);
 
-  const cambiarStock = (p: Producto, valor: string) => {
+  const cambiarStock = async (p: Producto, valor: string) => {
     const numero = Number(valor);
     if (valor.trim() === "" || !Number.isInteger(numero) || numero < 0) {
       mostrar("El stock debe ser un número entero igual o mayor a 0.");
       return;
     }
-    const res = modificarStockProducto(p.id, numero);
+    const res = await modificarStockProducto(p.id, numero);
     if (res.ok) {
       mostrar(`Stock de "${p.nombre}" actualizado a ${numero} unidades.`, false);
     } else {

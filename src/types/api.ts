@@ -52,6 +52,22 @@ export interface ProductoApi {
   categoria: CategoriaApi;
 }
 
+/** Cuerpo para crear o editar un producto. La categoría se envía solo con su id. */
+export interface ProductoRequestApi {
+  nombre: string;
+  descripcion: string;
+  precio: number;
+  precioOferta: number | null;
+  stock: number;
+  imagen: string;
+  categoria: { id: number };
+}
+
+export interface CategoriaRequestApi {
+  nombre: string;
+  descripcion: string;
+}
+
 export interface ItemPedidoApi {
   productoId: number;
   nombre: string;

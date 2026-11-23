@@ -8,7 +8,9 @@ import {
 } from "../types";
 import {
   CategoriaApi,
+  CategoriaRequestApi,
   ProductoApi,
+  ProductoRequestApi,
   UsuarioApi,
   UsuarioRequestApi,
 } from "../types/api";
@@ -67,4 +69,22 @@ export const datosUsuarioARequest = (
   rol: d.rol,
   contrasena: d.contrasena ?? "",
   aceptaTerminos,
+});
+
+export const productoARequest = (
+  p: Omit<Producto, "id">,
+  idCategoria: number,
+): ProductoRequestApi => ({
+  nombre: p.nombre,
+  descripcion: p.descripcion ?? "",
+  precio: p.precio,
+  precioOferta: p.precioOferta ?? null,
+  stock: p.stock,
+  imagen: p.imagen,
+  categoria: { id: idCategoria },
+});
+
+export const categoriaARequest = (c: Omit<Categoria, "id">): CategoriaRequestApi => ({
+  nombre: c.nombre,
+  descripcion: c.descripcion ?? "",
 });

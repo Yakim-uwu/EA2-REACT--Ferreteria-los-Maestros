@@ -25,6 +25,7 @@ export default function AdminCategorias() {
   const [editando, setEditando] = useState<Categoria | null>(null);
   const [form, setForm] = useState<CamposCategoria>(FORMULARIO_VACIO);
   const [errores, setErrores] = useState<ErroresCategoria>({});
+  const [enviando, setEnviando] = useState<boolean>(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -46,7 +47,7 @@ export default function AdminCategorias() {
     setForm({ nombre: c.nombre, descripcion: c.descripcion ?? "" });
   };
 
-  const handleGuardar = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleGuardar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const erroresEncontrados = validarCategoria(form);
@@ -60,17 +61,20 @@ export default function AdminCategorias() {
       nombre: form.nombre.trim(),
       descripcion: form.descripcion.trim(),
     };
-    const res = editando
+    setEnviando(true);
+    const res = await (editando
       ? actualizarCategoria({ ...editando, ...datos })
-      : crearCategoria(datos);
+      : crearCategoria(datos));
+    setEnviando(false);
     mostrarRespuesta(res);
     if (res.ok) reiniciarFormulario();
   };
 
-  const handleEliminar = (c: Categoria) => {
+  const handleEliminar = async (c: Categoria) => {
     if (!window.confirm(`¿Eliminar la categoría "${c.nombre}"?`)) return;
-    mostrarRespuesta(eliminarCategoria(c.id));
-    if (editando?.id === c.id) reiniciarFormulario();
+    const res = await eliminarCategoria(c.id);
+    mostrarRespuesta(res);
+    if (res.ok && editando?.id === c.id) reiniciarFormulario();
   };
 
   return (
@@ -120,8 +124,16 @@ export default function AdminCategorias() {
               </div>
 
               <div className="d-flex gap-2 mt-4">
-                <button type="submit" className="btn btn-warning fw-bold w-100">
-                  {editando ? "Actualizar Categoría" : "Agregar Categoría"}
+                <button
+                  type="submit"
+                  className="btn btn-warning fw-bold w-100"
+                  disabled={enviando}
+                >
+                  {enviando
+                    ? "Guardando..."
+                    : editando
+                      ? "Actualizar Categoría"
+                      : "Agregar Categoría"}
                 </button>
                 {editando && (
                   <button

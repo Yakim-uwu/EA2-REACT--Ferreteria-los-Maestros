@@ -4,19 +4,23 @@ import { productoService } from "../services/productoService";
 import { categoriaService } from "../services/categoriaService";
 import { mensajeDeError } from "../utils/errores";
 
-const normalizar = (texto: string): string => texto.trim().toLowerCase();
-
-/** Productos y categorías: estado, persistencia y reglas de negocio del catálogo. */
+/**
+ * Productos y categorías. Los datos viven en el backend (MySQL): este hook los lee y
+ * envía las operaciones por la API. Las reglas de negocio (nombres únicos, stock, ofertas,
+ * categorías con productos) las valida el backend y sus mensajes se muestran tal cual.
+ */
 export function useCatalogo() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [cargandoCatalogo, setCargandoCatalogo] = useState<boolean>(true);
   const [errorCatalogo, setErrorCatalogo] = useState<string | null>(null);
 
-  // Lee productos y categorías desde el backend (Spring Boot -> MySQL)
-  const recargarCatalogo = useCallback(async (): Promise<void> => {
-    setCargandoCatalogo(true);
-    setErrorCatalogo(null);
+  // Lee productos y categorías desde el backend. "silencioso" refresca sin mostrar el spinner.
+  const cargarCatalogo = useCallback(async (silencioso: boolean): Promise<void> => {
+    if (!silencioso) {
+      setCargandoCatalogo(true);
+      setErrorCatalogo(null);
+    }
     try {
       const [listaProductos, listaCategorias] = await Promise.all([
         productoService.obtenerTodos(),
@@ -25,62 +29,96 @@ export function useCatalogo() {
       setProductos(listaProductos);
       setCategorias(listaCategorias);
     } catch (error) {
-      setErrorCatalogo(mensajeDeError(error));
+      if (!silencioso) setErrorCatalogo(mensajeDeError(error));
     } finally {
-      setCargandoCatalogo(false);
+      if (!silencioso) setCargandoCatalogo(false);
     }
   }, []);
 
+  const recargarCatalogo = useCallback(() => cargarCatalogo(false), [cargarCatalogo]);
+
   useEffect(() => {
-    void recargarCatalogo();
-  }, [recargarCatalogo]);
+    void cargarCatalogo(false);
+  }, [cargarCatalogo]);
+
+  // El formulario de productos trabaja con el nombre de la categoría; la API pide su id
+  const idDeCategoria = useCallback(
+    (nombre: string): number | null => {
+      const categoria = categorias.find((c) => c.nombre === nombre);
+      return categoria ? Number(categoria.id) : null;
+    },
+    [categorias],
+  );
 
   // --- Productos ---
   const crearProducto = useCallback(
-    (nuevo: Omit<Producto, "id">): RespuestaOperacion => {
-      setProductos((prev) => [...prev, { ...nuevo, id: `prod-${Date.now()}` }]);
-      return { ok: true, mensaje: "Producto creado correctamente." };
+    async (nuevo: Omit<Producto, "id">): Promise<RespuestaOperacion> => {
+      const idCategoria = idDeCategoria(nuevo.categoria);
+      if (idCategoria === null) {
+        return { ok: false, mensaje: "La categoría seleccionada no existe." };
+      }
+      try {
+        const creado = await productoService.crear(nuevo, idCategoria);
+        setProductos((prev) => [...prev, creado]);
+        return { ok: true, mensaje: "Producto creado correctamente." };
+      } catch (error) {
+        return { ok: false, mensaje: mensajeDeError(error) };
+      }
     },
-    [setProductos],
+    [idDeCategoria],
   );
 
   const actualizarProducto = useCallback(
-    (actualizado: Producto): RespuestaOperacion => {
-      setProductos((prev) =>
-        prev.map((p) => (p.id === actualizado.id ? actualizado : p)),
-      );
-      return { ok: true, mensaje: "Producto actualizado correctamente." };
+    async (actualizado: Producto): Promise<RespuestaOperacion> => {
+      const idCategoria = idDeCategoria(actualizado.categoria);
+      if (idCategoria === null) {
+        return { ok: false, mensaje: "La categoría seleccionada no existe." };
+      }
+      try {
+        const { id, ...datos } = actualizado;
+        const guardado = await productoService.actualizar(id, datos, idCategoria);
+        setProductos((prev) => prev.map((p) => (p.id === id ? guardado : p)));
+        return { ok: true, mensaje: "Producto actualizado correctamente." };
+      } catch (error) {
+        return { ok: false, mensaje: mensajeDeError(error) };
+      }
     },
-    [setProductos],
+    [idDeCategoria],
   );
 
   const eliminarProducto = useCallback(
-    (id: string): RespuestaOperacion => {
-      setProductos((prev) => prev.filter((p) => p.id !== id));
-      return { ok: true, mensaje: "Producto eliminado correctamente." };
+    async (id: string): Promise<RespuestaOperacion> => {
+      try {
+        await productoService.eliminar(id);
+        setProductos((prev) => prev.filter((p) => p.id !== id));
+        return { ok: true, mensaje: "Producto eliminado correctamente." };
+      } catch (error) {
+        return { ok: false, mensaje: mensajeDeError(error) };
+      }
     },
-    [setProductos],
+    [],
   );
 
   const modificarStockProducto = useCallback(
-    (idProducto: string, nuevoStock: number): RespuestaOperacion => {
+    async (idProducto: string, nuevoStock: number): Promise<RespuestaOperacion> => {
       if (!Number.isInteger(nuevoStock) || nuevoStock < 0) {
         return {
           ok: false,
           mensaje: "El stock debe ser un número entero igual o mayor a 0.",
         };
       }
-      setProductos((prev) =>
-        prev.map((p) =>
-          p.id === idProducto ? { ...p, stock: nuevoStock } : p,
-        ),
-      );
-      return { ok: true, mensaje: "Stock actualizado correctamente." };
+      try {
+        const actualizado = await productoService.actualizarStock(idProducto, nuevoStock);
+        setProductos((prev) => prev.map((p) => (p.id === idProducto ? actualizado : p)));
+        return { ok: true, mensaje: "Stock actualizado correctamente." };
+      } catch (error) {
+        return { ok: false, mensaje: mensajeDeError(error) };
+      }
     },
-    [setProductos],
+    [],
   );
 
-  /** Descuenta del stock lo vendido (se usa al finalizar una compra). */
+  /** Descuenta del stock lo vendido. Se mantiene local hasta migrar las compras a la API. */
   const descontarStock = useCallback(
     (items: ItemCarrito[]): void => {
       setProductos((prev) =>
@@ -92,75 +130,50 @@ export function useCatalogo() {
         }),
       );
     },
-    [setProductos],
+    [],
   );
 
   // --- Categorías ---
   const crearCategoria = useCallback(
-    (nueva: Omit<Categoria, "id">): RespuestaOperacion => {
-      if (categorias.some((c) => normalizar(c.nombre) === normalizar(nueva.nombre))) {
-        return {
-          ok: false,
-          mensaje: `Ya existe una categoría llamada "${nueva.nombre.trim()}".`,
-        };
+    async (nueva: Omit<Categoria, "id">): Promise<RespuestaOperacion> => {
+      try {
+        const creada = await categoriaService.crear(nueva);
+        setCategorias((prev) => [...prev, creada]);
+        return { ok: true, mensaje: "Categoría creada exitosamente." };
+      } catch (error) {
+        return { ok: false, mensaje: mensajeDeError(error) };
       }
-      setCategorias((prev) => [...prev, { ...nueva, id: `cat-${Date.now()}` }]);
-      return { ok: true, mensaje: "Categoría creada exitosamente." };
     },
-    [categorias, setCategorias],
+    [],
   );
 
   const actualizarCategoria = useCallback(
-    (actualizada: Categoria): RespuestaOperacion => {
-      const anterior = categorias.find((c) => c.id === actualizada.id);
-      if (!anterior) return { ok: false, mensaje: "La categoría no existe." };
-
-      const duplicada = categorias.some(
-        (c) =>
-          c.id !== actualizada.id &&
-          normalizar(c.nombre) === normalizar(actualizada.nombre),
-      );
-      if (duplicada) {
-        return {
-          ok: false,
-          mensaje: `Ya existe una categoría llamada "${actualizada.nombre.trim()}".`,
-        };
+    async (actualizada: Categoria): Promise<RespuestaOperacion> => {
+      try {
+        const { id, ...datos } = actualizada;
+        const guardada = await categoriaService.actualizar(id, datos);
+        setCategorias((prev) => prev.map((c) => (c.id === id ? guardada : c)));
+        // Los productos muestran el nombre de su categoría: se refrescan para ver el cambio
+        await cargarCatalogo(true);
+        return { ok: true, mensaje: "Categoría actualizada exitosamente." };
+      } catch (error) {
+        return { ok: false, mensaje: mensajeDeError(error) };
       }
-
-      setCategorias((prev) =>
-        prev.map((c) => (c.id === actualizada.id ? actualizada : c)),
-      );
-      // Los productos guardan el nombre de su categoría: se mantienen sincronizados
-      if (anterior.nombre !== actualizada.nombre) {
-        setProductos((prev) =>
-          prev.map((p) =>
-            p.categoria === anterior.nombre
-              ? { ...p, categoria: actualizada.nombre }
-              : p,
-          ),
-        );
-      }
-      return { ok: true, mensaje: "Categoría actualizada exitosamente." };
     },
-    [categorias, setCategorias, setProductos],
+    [cargarCatalogo],
   );
 
   const eliminarCategoria = useCallback(
-    (id: string): RespuestaOperacion => {
-      const categoria = categorias.find((c) => c.id === id);
-      if (!categoria) return { ok: false, mensaje: "La categoría no existe." };
-
-      const enUso = productos.filter((p) => p.categoria === categoria.nombre).length;
-      if (enUso > 0) {
-        return {
-          ok: false,
-          mensaje: `No puedes eliminar "${categoria.nombre}": tiene ${enUso} producto(s) asociado(s).`,
-        };
+    async (id: string): Promise<RespuestaOperacion> => {
+      try {
+        await categoriaService.eliminar(id);
+        setCategorias((prev) => prev.filter((c) => c.id !== id));
+        return { ok: true, mensaje: "Categoría eliminada." };
+      } catch (error) {
+        return { ok: false, mensaje: mensajeDeError(error) };
       }
-      setCategorias((prev) => prev.filter((c) => c.id !== id));
-      return { ok: true, mensaje: "Categoría eliminada." };
     },
-    [categorias, productos, setCategorias],
+    [],
   );
 
   return {

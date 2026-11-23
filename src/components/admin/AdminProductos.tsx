@@ -38,6 +38,7 @@ export default function AdminProductos() {
     formularioVacio(categoriaInicial),
   );
   const [errores, setErrores] = useState<ErroresProducto>({});
+  const [enviando, setEnviando] = useState<boolean>(false);
   const [busqueda, setBusqueda] = useState<string>("");
 
   const visibles = useMemo(() => {
@@ -84,7 +85,7 @@ export default function AdminProductos() {
     });
   };
 
-  const handleGuardar = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleGuardar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const erroresEncontrados = validarProducto(form);
@@ -105,17 +106,20 @@ export default function AdminProductos() {
       imagen: form.imagen,
     };
 
-    const res = editando
+    setEnviando(true);
+    const res = await (editando
       ? actualizarProducto({ ...editando, ...datos })
-      : crearProducto(datos);
+      : crearProducto(datos));
+    setEnviando(false);
     mostrarRespuesta(res);
     if (res.ok) reiniciarFormulario();
   };
 
-  const handleEliminar = (p: Producto) => {
+  const handleEliminar = async (p: Producto) => {
     if (!window.confirm(`¿Eliminar "${p.nombre}" del catálogo?`)) return;
-    mostrarRespuesta(eliminarProducto(p.id));
-    if (editando?.id === p.id) reiniciarFormulario();
+    const res = await eliminarProducto(p.id);
+    mostrarRespuesta(res);
+    if (res.ok && editando?.id === p.id) reiniciarFormulario();
   };
 
   return (
@@ -271,8 +275,16 @@ export default function AdminProductos() {
               </div>
 
               <div className="d-flex gap-2 mt-4">
-                <button type="submit" className="btn btn-warning fw-bold w-100">
-                  {editando ? "Actualizar Producto" : "Guardar Producto"}
+                <button
+                  type="submit"
+                  className="btn btn-warning fw-bold w-100"
+                  disabled={enviando}
+                >
+                  {enviando
+                    ? "Guardando..."
+                    : editando
+                      ? "Actualizar Producto"
+                      : "Guardar Producto"}
                 </button>
                 {editando && (
                   <button
