@@ -1,7 +1,12 @@
 import React, { useMemo, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { useAlerta } from "../../hooks/useAlerta";
-import { DatosUsuario, RespuestaOperacion, RolUsuario, Usuario } from "../../types";
+import {
+  DatosUsuario,
+  RespuestaOperacion,
+  RolUsuario,
+  Usuario,
+} from "../../types";
 import { ETIQUETA_ROL } from "../../utils/permisos";
 import Alerta from "../Alerta";
 import FormularioUsuario from "../FormularioUsuario";
@@ -30,20 +35,28 @@ export default function AdminUsuarios() {
     );
   }, [usuarios, busqueda, filtroRol]);
 
-  const handleGuardar = (datos: DatosUsuario): RespuestaOperacion => {
-    const res = editando
+  const handleGuardar = async (
+    datos: DatosUsuario,
+  ): Promise<RespuestaOperacion> => {
+    const res = await (editando
       ? actualizarUsuario(editando.id, datos)
-      : registrarUsuario(datos);
+      : registrarUsuario(datos));
     mostrarRespuesta(res);
     if (res.ok) setEditando(null);
     return res;
   };
 
-  const handleEliminar = (u: Usuario) => {
-    if (!window.confirm(`¿Eliminar a ${u.nombreCompleto}? Esta acción no se puede deshacer.`)) {
+  const handleEliminar = async (u: Usuario) => {
+    if (
+      !window.confirm(
+        `¿Eliminar a ${u.nombreCompleto}? Esta acción no se puede deshacer.`,
+      )
+    ) {
       return;
     }
-    mostrarRespuesta(eliminarUsuario(u.id));
+    const res = await eliminarUsuario(u.id);
+    mostrarRespuesta(res);
+    if (res.ok && editando?.id === u.id) setEditando(null);
   };
 
   return (

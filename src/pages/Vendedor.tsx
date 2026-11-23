@@ -26,8 +26,10 @@ export default function Vendedor() {
   const clientes = usuarios.filter((u) => u.rol === "cliente");
 
   // Restricción de negocio: el vendedor crea exclusivamente cuentas con rol "cliente"
-  const handleCrearCliente = (datos: DatosUsuario): RespuestaOperacion => {
-    const res = registrarUsuario({ ...datos, rol: "cliente" });
+  const handleCrearCliente = async (
+    datos: DatosUsuario,
+  ): Promise<RespuestaOperacion> => {
+    const res = await registrarUsuario({ ...datos, rol: "cliente" });
     mostrarRespuesta(res);
     return res;
   };

@@ -116,7 +116,10 @@ export default function AdminCategorias() {
                     id="cat-descripcion"
                     name="descripcion"
                     type="text"
-                    className={claseControl("form-control", errores.descripcion)}
+                    className={claseControl(
+                      "form-control",
+                      errores.descripcion,
+                    )}
                     value={form.descripcion}
                     onChange={handleChange}
                   />

@@ -18,4 +18,33 @@ export const usuarioService = {
     );
     return usuarioDesdeApi(respuesta.data);
   },
+
+  /** Administrador ve todos; vendedor recibe solo clientes desde el backend. */
+  async obtenerTodos(): Promise<Usuario[]> {
+    const respuesta = await api.get<UsuarioApi[]>("/api/usuarios");
+    return respuesta.data.map(usuarioDesdeApi);
+  },
+
+  /** Alta por administrador (cualquier rol) o vendedor (el backend fuerza rol cliente). */
+  async crear(datos: DatosUsuario): Promise<Usuario> {
+    const respuesta = await api.post<UsuarioApi>(
+      "/api/usuarios",
+      datosUsuarioARequest(datos, true),
+    );
+    return usuarioDesdeApi(respuesta.data);
+  },
+
+  /** Solo administrador: edita datos y rol. */
+  async actualizar(id: string, datos: DatosUsuario): Promise<Usuario> {
+    const respuesta = await api.put<UsuarioApi>(
+      `/api/usuarios/${id}`,
+      datosUsuarioARequest(datos, true),
+    );
+    return usuarioDesdeApi(respuesta.data);
+  },
+
+  /** Solo administrador: elimina un usuario. */
+  async eliminar(id: string): Promise<void> {
+    await api.delete(`/api/usuarios/${id}`);
+  },
 };
