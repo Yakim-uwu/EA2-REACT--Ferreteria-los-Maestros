@@ -29,6 +29,7 @@ export default function Login() {
 
   const [form, setForm] = useState<CamposLogin>({ correo: "", contrasena: "" });
   const [errores, setErrores] = useState<ErroresLogin>({});
+  const [enviando, setEnviando] = useState<boolean>(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -38,14 +39,16 @@ export default function Login() {
     }
   };
 
-  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const erroresEncontrados = validarLogin(form);
     setErrores(erroresEncontrados);
     if (Object.keys(erroresEncontrados).length > 0) return;
 
-    const res = iniciarSesion(form.correo, form.contrasena);
+    setEnviando(true);
+    const res = await iniciarSesion(form.correo, form.contrasena);
+    setEnviando(false);
     mostrarRespuesta(res);
     if (res.ok && res.usuario) {
       // Vuelve a la página que se intentó abrir; si no hubo una, va al inicio del rol
@@ -101,8 +104,9 @@ export default function Login() {
           <button
             type="submit"
             className="btn btn-warning w-100 fw-bold py-2 mb-3"
+            disabled={enviando}
           >
-            Ingresar
+            {enviando ? "Ingresando..." : "Ingresar"}
           </button>
 
           <p className="text-center mb-0">

@@ -14,6 +14,19 @@ export interface UsuarioApi {
   rol: string;
 }
 
+/** Cuerpo que recibe el backend para registrar o editar un usuario. */
+export interface UsuarioRequestApi {
+  nombreCompleto: string;
+  fechaNacimiento: string;
+  correo: string;
+  direccion: string;
+  region: string;
+  genero: string;
+  rol?: string;
+  contrasena?: string;
+  aceptaTerminos: boolean;
+}
+
 export interface AuthApi {
   accessToken: string;
   refreshToken: string;

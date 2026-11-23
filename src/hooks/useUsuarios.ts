@@ -1,30 +1,78 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useState } from "react";
+import axios from "axios";
 import { DatosUsuario, RespuestaOperacion, Usuario } from "../types";
 import { usuariosSemilla } from "../data/usuarios";
+import { EVENTO_SESION_EXPIRADA } from "../api/axiosConfig";
+import { authService } from "../services/authService";
+import { usuarioService } from "../services/usuarioService";
 import { calcularEdad } from "../utils/format";
+import { mensajeDeError } from "../utils/errores";
+import { CLAVE_TOKENS, limpiarTokens, obtenerTokens } from "../utils/tokens";
 import { useLocalStorage } from "./useLocalStorage";
 
 export interface RespuestaSesion extends RespuestaOperacion {
   usuario?: Usuario;
 }
 
-/** Usuarios, sesión activa y reglas de negocio de roles y permisos. */
+/** Sesión (JWT), usuarios y reglas de roles y permisos. */
 export function useUsuarios() {
+  // Lista local de ejemplo: la usan los paneles de Administrador y Vendedor
+  // hasta que se migren a la API (paso siguiente).
   const [usuarios, setUsuarios] = useLocalStorage<Usuario[]>(
     "usuarios",
     usuariosSemilla,
   );
-  // Solo se guarda el id de la sesión: el usuario activo se deriva de la lista,
-  // así los cambios de rol o de perfil se reflejan de inmediato en los permisos.
-  const [idActivo, setIdActivo] = useLocalStorage<string | null>(
-    "idUsuarioActivo",
-    null,
+
+  // El usuario con sesión viene del backend. En el navegador solo se guardan los tokens.
+  const [usuarioActivo, setUsuarioActivo] = useState<Usuario | null>(null);
+  // true mientras se verifica con el backend una sesión guardada (por ejemplo, al recargar la página)
+  const [cargandoSesion, setCargandoSesion] = useState<boolean>(
+    () => obtenerTokens() !== null,
   );
 
-  const usuarioActivo = useMemo<Usuario | null>(
-    () => usuarios.find((u) => u.id === idActivo) ?? null,
-    [usuarios, idActivo],
-  );
+  // Al abrir o recargar la página: si hay tokens guardados, se recupera la sesión.
+  useEffect(() => {
+    if (obtenerTokens() === null) {
+      setCargandoSesion(false);
+      return;
+    }
+    let vigente = true;
+    usuarioService
+      .obtenerMiPerfil()
+      .then((usuario) => {
+        if (vigente) setUsuarioActivo(usuario);
+      })
+      .catch((error: unknown) => {
+        // Tokens inválidos o vencidos (y no renovables): se descartan
+        if (
+          axios.isAxiosError(error) &&
+          (error.response?.status === 401 || error.response?.status === 403)
+        ) {
+          limpiarTokens();
+        }
+      })
+      .finally(() => {
+        if (vigente) setCargandoSesion(false);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, []);
+
+  // La sesión se cierra sola si no se pudo renovar el token o si se cerró en otra pestaña.
+  useEffect(() => {
+    const alExpirar = () => setUsuarioActivo(null);
+    const alCambiarAlmacenamiento = (evento: StorageEvent) => {
+      if (evento.key !== null && evento.key !== CLAVE_TOKENS) return;
+      if (obtenerTokens() === null) setUsuarioActivo(null);
+    };
+    window.addEventListener(EVENTO_SESION_EXPIRADA, alExpirar);
+    window.addEventListener("storage", alCambiarAlmacenamiento);
+    return () => {
+      window.removeEventListener(EVENTO_SESION_EXPIRADA, alExpirar);
+      window.removeEventListener("storage", alCambiarAlmacenamiento);
+    };
+  }, []);
 
   const correoEnUso = useCallback(
     (correo: string, idExcluido?: string): boolean =>
@@ -37,30 +85,59 @@ export function useUsuarios() {
   );
 
   const iniciarSesion = useCallback(
-    (correo: string, contrasena: string): RespuestaSesion => {
-      const encontrado = usuarios.find(
-        (u) =>
-          u.correo.toLowerCase() === correo.trim().toLowerCase() &&
-          u.contrasena === contrasena,
-      );
-      if (!encontrado) {
+    async (correo: string, contrasena: string): Promise<RespuestaSesion> => {
+      try {
+        const usuario = await authService.login(correo, contrasena);
+        setUsuarioActivo(usuario);
         return {
-          ok: false,
-          mensaje: "Credenciales incorrectas. Revisa el correo y la contraseña.",
+          ok: true,
+          mensaje: `¡Bienvenido/a ${usuario.nombreCompleto}!`,
+          usuario,
         };
+      } catch (error) {
+        return { ok: false, mensaje: mensajeDeError(error) };
       }
-      setIdActivo(encontrado.id);
-      return {
-        ok: true,
-        mensaje: `¡Bienvenido/a ${encontrado.nombreCompleto}!`,
-        usuario: encontrado,
-      };
     },
-    [usuarios, setIdActivo],
+    [],
   );
 
-  const cerrarSesion = useCallback(() => setIdActivo(null), [setIdActivo]);
+  const cerrarSesion = useCallback(() => {
+    limpiarTokens();
+    setUsuarioActivo(null);
+  }, []);
 
+  /** Registro público de un cliente (se guarda en el backend). */
+  const registrarse = useCallback(
+    async (datos: DatosUsuario): Promise<RespuestaOperacion> => {
+      try {
+        await authService.registrar(datos);
+        return { ok: true, mensaje: "Usuario registrado con éxito." };
+      } catch (error) {
+        return { ok: false, mensaje: mensajeDeError(error) };
+      }
+    },
+    [],
+  );
+
+  /** El usuario con sesión edita su propio perfil. El rol nunca se modifica desde aquí. */
+  const actualizarPerfil = useCallback(
+    async (datos: Omit<DatosUsuario, "rol">): Promise<RespuestaOperacion> => {
+      if (!usuarioActivo) return { ok: false, mensaje: "No hay sesión activa." };
+      try {
+        const actualizado = await usuarioService.actualizarMiPerfil({
+          ...datos,
+          rol: usuarioActivo.rol,
+        });
+        setUsuarioActivo(actualizado);
+        return { ok: true, mensaje: "Perfil actualizado correctamente." };
+      } catch (error) {
+        return { ok: false, mensaje: mensajeDeError(error) };
+      }
+    },
+    [usuarioActivo],
+  );
+
+  // --- Gestión de usuarios (lista local de ejemplo; se migra a la API en el paso siguiente) ---
   const registrarUsuario = useCallback(
     (datos: DatosUsuario): RespuestaOperacion => {
       if (correoEnUso(datos.correo)) {
@@ -166,33 +243,13 @@ export function useUsuarios() {
     [usuarioActivo, usuarios, setUsuarios],
   );
 
-  /** El usuario activo edita su propio perfil. El rol nunca se modifica desde aquí. */
-  const actualizarPerfil = useCallback(
-    (datos: Omit<DatosUsuario, "rol">): RespuestaOperacion => {
-      if (!usuarioActivo) return { ok: false, mensaje: "No hay sesión activa." };
-      if (correoEnUso(datos.correo, usuarioActivo.id)) {
-        return {
-          ok: false,
-          mensaje: "Ese correo electrónico ya pertenece a otro usuario.",
-        };
-      }
-      setUsuarios((prev) =>
-        prev.map((u) =>
-          u.id === usuarioActivo.id
-            ? { ...u, ...datos, edad: calcularEdad(datos.fechaNacimiento) }
-            : u,
-        ),
-      );
-      return { ok: true, mensaje: "Perfil actualizado correctamente." };
-    },
-    [usuarioActivo, correoEnUso, setUsuarios],
-  );
-
   return {
     usuarios,
     usuarioActivo,
+    cargandoSesion,
     iniciarSesion,
     cerrarSesion,
+    registrarse,
     registrarUsuario,
     actualizarUsuario,
     eliminarUsuario,

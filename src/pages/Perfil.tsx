@@ -20,10 +20,10 @@ export default function Perfil() {
   // La ruta está protegida, pero se mantiene la guarda por seguridad de tipos
   if (!usuarioActivo) return null;
 
-  const handleGuardar = (datos: DatosUsuario): RespuestaOperacion => {
+  const handleGuardar = async (datos: DatosUsuario): Promise<RespuestaOperacion> => {
     // El rol nunca se envía al store desde el perfil
     const { rol, ...datosPerfil } = datos;
-    const res = actualizarPerfil(datosPerfil);
+    const res = await actualizarPerfil(datosPerfil);
     mostrarRespuesta(res);
     return res;
   };

@@ -21,7 +21,8 @@ export interface Usuario {
   genero: GeneroUsuario;
   rol: RolUsuario;
   avatar?: string;
-  contrasena: string;
+  /** Solo existe en los datos locales de ejemplo; el backend nunca envía la contraseña. */
+  contrasena?: string;
 }
 
 /** Datos que entrega un formulario para crear o editar un usuario. */

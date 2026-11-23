@@ -8,11 +8,11 @@ export interface Tokens {
   refreshToken: string;
 }
 
-const CLAVE = "ferreteria-tokens";
+export const CLAVE_TOKENS = "ferreteria-tokens";
 
 export function obtenerTokens(): Tokens | null {
   try {
-    const crudo = localStorage.getItem(CLAVE);
+    const crudo = localStorage.getItem(CLAVE_TOKENS);
     if (!crudo) return null;
     const datos: unknown = JSON.parse(crudo);
     if (typeof datos === "object" && datos !== null) {
@@ -28,9 +28,9 @@ export function obtenerTokens(): Tokens | null {
 }
 
 export function guardarTokens(tokens: Tokens): void {
-  localStorage.setItem(CLAVE, JSON.stringify(tokens));
+  localStorage.setItem(CLAVE_TOKENS, JSON.stringify(tokens));
 }
 
 export function limpiarTokens(): void {
-  localStorage.removeItem(CLAVE);
+  localStorage.removeItem(CLAVE_TOKENS);
 }

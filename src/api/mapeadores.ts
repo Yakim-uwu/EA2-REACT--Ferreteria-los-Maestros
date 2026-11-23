@@ -1,5 +1,17 @@
-import { Categoria, Producto } from "../types";
-import { CategoriaApi, ProductoApi } from "../types/api";
+import {
+  Categoria,
+  DatosUsuario,
+  GeneroUsuario,
+  Producto,
+  RolUsuario,
+  Usuario,
+} from "../types";
+import {
+  CategoriaApi,
+  ProductoApi,
+  UsuarioApi,
+  UsuarioRequestApi,
+} from "../types/api";
 
 // Traducen las respuestas del backend a los tipos que usa el frontend.
 // Diferencias: el backend usa ids numéricos (aquí son texto) y entrega la categoría como objeto.
@@ -22,4 +34,37 @@ export const productoDesdeApi = (p: ProductoApi): Producto => ({
   categoria: p.categoria.nombre,
   categoriaId: String(p.categoria.id),
   imagen: p.imagen ?? IMAGEN_POR_DEFECTO,
+});
+
+const ROLES: RolUsuario[] = ["administrador", "vendedor", "cliente"];
+const GENEROS: GeneroUsuario[] = ["masculino", "femenino", "otro", "prefiero_no_decir"];
+
+export const usuarioDesdeApi = (u: UsuarioApi): Usuario => ({
+  id: String(u.id),
+  nombreCompleto: u.nombreCompleto,
+  fechaNacimiento: u.fechaNacimiento,
+  edad: u.edad,
+  correo: u.correo,
+  direccion: u.direccion,
+  region: u.region,
+  genero: GENEROS.includes(u.genero as GeneroUsuario)
+    ? (u.genero as GeneroUsuario)
+    : "prefiero_no_decir",
+  // Si llegara un rol desconocido se asume el de menor privilegio
+  rol: ROLES.includes(u.rol as RolUsuario) ? (u.rol as RolUsuario) : "cliente",
+});
+
+export const datosUsuarioARequest = (
+  d: DatosUsuario,
+  aceptaTerminos: boolean,
+): UsuarioRequestApi => ({
+  nombreCompleto: d.nombreCompleto,
+  fechaNacimiento: d.fechaNacimiento,
+  correo: d.correo,
+  direccion: d.direccion,
+  region: d.region,
+  genero: d.genero,
+  rol: d.rol,
+  contrasena: d.contrasena ?? "",
+  aceptaTerminos,
 });

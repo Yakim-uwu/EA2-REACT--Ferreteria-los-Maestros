@@ -32,7 +32,7 @@ interface FormularioUsuarioProps {
   rolFijo?: RolUsuario;
   textoBoton: string;
   /** El padre ejecuta la operación del store y muestra el mensaje; el formulario solo valida. */
-  onGuardar: (datos: DatosUsuario) => RespuestaOperacion;
+  onGuardar: (datos: DatosUsuario) => RespuestaOperacion | Promise<RespuestaOperacion>;
   onCancelar?: () => void;
 }
 
@@ -75,6 +75,7 @@ export default function FormularioUsuario({
     crearEstadoInicial(usuarioInicial, rolPorDefecto),
   );
   const [errores, setErrores] = useState<ErroresUsuario>({});
+  const [enviando, setEnviando] = useState<boolean>(false);
 
   const esEdicion = modo === "edicion";
 
@@ -92,7 +93,7 @@ export default function FormularioUsuario({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const erroresEncontrados = validarUsuario(form, {
@@ -114,7 +115,11 @@ export default function FormularioUsuario({
       contrasena: form.contrasena || usuarioInicial?.contrasena || "",
     };
 
-    const respuesta = onGuardar(datos);
+    setEnviando(true);
+    // onGuardar puede ser síncrono (datos locales) o asíncrono (API): ambos se esperan igual
+    const respuesta = await Promise.resolve(onGuardar(datos)).finally(() =>
+      setEnviando(false),
+    );
     if (!respuesta.ok) return;
 
     if (esEdicion) {
@@ -362,8 +367,12 @@ export default function FormularioUsuario({
       </div>
 
       <div className="d-flex gap-2 mt-4">
-        <button type="submit" className="btn btn-warning fw-bold w-100 py-2">
-          {textoBoton}
+        <button
+          type="submit"
+          className="btn btn-warning fw-bold w-100 py-2"
+          disabled={enviando}
+        >
+          {enviando ? "Guardando..." : textoBoton}
         </button>
         {onCancelar && (
           <button

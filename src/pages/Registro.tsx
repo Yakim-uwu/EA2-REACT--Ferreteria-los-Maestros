@@ -8,12 +8,12 @@ import Alerta from "../components/Alerta";
 import FormularioUsuario from "../components/FormularioUsuario";
 
 export default function Registro() {
-  const { registrarUsuario } = useStore();
+  const { registrarse } = useStore();
   const { alerta, mostrarRespuesta } = useAlerta(0);
   const redirigir = useRedireccion();
 
-  const handleGuardar = (datos: DatosUsuario): RespuestaOperacion => {
-    const res = registrarUsuario(datos);
+  const handleGuardar = async (datos: DatosUsuario): Promise<RespuestaOperacion> => {
+    const res = await registrarse(datos);
     if (res.ok) {
       mostrarRespuesta({
         ok: true,

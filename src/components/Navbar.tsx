@@ -23,7 +23,7 @@ function EnlaceNav({ to, end, children }: EnlaceNavProps) {
 }
 
 export default function Navbar() {
-  const { usuarioActivo, totalItems, cerrarSesion } = useStore();
+  const { usuarioActivo, totalItems, cerrarSesion, cargandoSesion } = useStore();
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
@@ -93,7 +93,13 @@ export default function Navbar() {
               </Link>
             )}
 
-            {usuarioActivo ? (
+            {cargandoSesion ? (
+              <div
+                className="spinner-border spinner-border-sm text-warning"
+                role="status"
+                aria-label="Verificando sesión"
+              />
+            ) : usuarioActivo ? (
               <div className="dropdown">
                 <button
                   className="btn btn-warning dropdown-toggle fw-bold"
