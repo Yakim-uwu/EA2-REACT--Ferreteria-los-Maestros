@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Categoria, ItemCarrito, Producto, RespuestaOperacion } from "../types";
+import { Categoria, Producto, RespuestaOperacion } from "../types";
 import { productoService } from "../services/productoService";
 import { categoriaService } from "../services/categoriaService";
 import { mensajeDeError } from "../utils/errores";
@@ -140,16 +140,6 @@ export function useCatalogo() {
     [],
   );
 
-  /** Descuenta del stock lo vendido. Se mantiene local hasta migrar las compras a la API. */
-  const descontarStock = useCallback((items: ItemCarrito[]): void => {
-    setProductos((prev) =>
-      prev.map((p) => {
-        const item = items.find((i) => i.idProducto === p.id);
-        return item ? { ...p, stock: Math.max(0, p.stock - item.cantidad) } : p;
-      }),
-    );
-  }, []);
-
   // --- Categorías ---
   const crearCategoria = useCallback(
     async (nueva: Omit<Categoria, "id">): Promise<RespuestaOperacion> => {
@@ -204,7 +194,7 @@ export function useCatalogo() {
     actualizarProducto,
     eliminarProducto,
     modificarStockProducto,
-    descontarStock,
+
     crearCategoria,
     actualizarCategoria,
     eliminarCategoria,
